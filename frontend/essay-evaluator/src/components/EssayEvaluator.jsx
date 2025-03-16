@@ -6,6 +6,7 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker?url';
 import CryptoJS from 'crypto-js';
 import { storeApiKey, retrieveApiKey, removeApiKey, hasStoredApiKey } from '../utils/apiKeyStorage';
 import { useAuth } from '../contexts/AuthContext';
+import presetRubrics from '../utils/presetRubrics';
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 const AnimatedBackground = () => (
@@ -201,6 +202,7 @@ const EssayEvaluator = () => {
   const [encryptionKey] = useState(CryptoJS.lib.WordArray.random(16).toString());
   const [rubricText, setRubricText] = useState('');
   const [rubricFile, setRubricFile] = useState(null);
+  const [selectedPresetRubric, setSelectedPresetRubric] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const { currentUser } = useAuth();
 
@@ -236,6 +238,22 @@ const EssayEvaluator = () => {
       if (currentUser) {
         removeApiKey(currentUser.uid);
       }
+    }
+  };
+
+  const handlePresetRubricChange = (e) => {
+    const selectedId = e.target.value;
+    setSelectedPresetRubric(selectedId);
+    
+    if (selectedId) {
+      const preset = presetRubrics.find(rubric => rubric.id === selectedId);
+      if (preset) {
+        setRubricText(preset.content);
+        setRubricFile(null); // Clear any uploaded file
+      }
+    } else {
+      // If "None" is selected, clear the rubric text
+      setRubricText('');
     }
   };
 
@@ -770,28 +788,75 @@ Your current API URL is: ${baseUrl}
             ) : (
               <motion.div key="rubric" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <FloatingCard>
-                  <label className="block text-gray-300 mb-2">Upload Rubric File</label>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="file"
-                        onChange={handleRubricUpload}
-                        accept=".pdf,.txt"
-                        className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 text-white"
-                      />
-                      <div className="flex space-x-1">
-                        <span className="px-2 py-1 bg-gray-700 rounded text-xs text-white">PDF</span>
-                        <span className="px-2 py-1 bg-gray-700 rounded text-xs text-white">TXT</span>
-                      </div>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-gray-300 mb-2">Select Preset Rubric</label>
+                      <select
+                        value={selectedPresetRubric}
+                        onChange={handlePresetRubricChange}
+                        className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-green-400 text-white"
+                      >
+                        <option value="">None (Custom Rubric)</option>
+                        {presetRubrics.map(rubric => (
+                          <option key={rubric.id} value={rubric.id}>{rubric.name}</option>
+                        ))}
+                      </select>
+                      {selectedPresetRubric && (
+                        <p className="mt-2 text-sm text-green-400">
+                          Using preset: {presetRubrics.find(r => r.id === selectedPresetRubric)?.name}
+                        </p>
+                      )}
                     </div>
-                    {rubricFile && <p className="mt-2 text-gray-300">Selected: {rubricFile.name}</p>}
-                    <div className="mt-2">
-                      <label className="block text-gray-300 mb-2">Rubric Content</label>
+                    
+                    <div className="border-t border-gray-700 pt-4">
+                      <label className="block text-gray-300 mb-2">Upload Rubric File</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="file"
+                          onChange={handleRubricUpload}
+                          accept=".pdf,.txt"
+                          className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 text-white"
+                        />
+                        <div className="flex space-x-1">
+                          <span className="px-2 py-1 bg-gray-700 rounded text-xs text-white">PDF</span>
+                          <span className="px-2 py-1 bg-gray-700 rounded text-xs text-white">TXT</span>
+                        </div>
+                      </div>
+                      {rubricFile && <p className="mt-2 text-gray-300">Selected: {rubricFile.name}</p>}
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-gray-300">Rubric Content</label>
+                        {rubricText && (
+                          <motion.button
+                            onClick={() => {
+                              setRubricText('');
+                              setRubricFile(null);
+                              setSelectedPresetRubric('');
+                            }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="text-xs px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded-full"
+                          >
+                            Clear
+                          </motion.button>
+                        )}
+                      </div>
                       <textarea
                         value={rubricText}
-                        onChange={(e) => setRubricText(e.target.value)}
+                        onChange={(e) => {
+                          setRubricText(e.target.value);
+                          // If user manually edits the text, clear the preset selection
+                          if (selectedPresetRubric) {
+                            const preset = presetRubrics.find(r => r.id === selectedPresetRubric);
+                            if (preset && e.target.value !== preset.content) {
+                              setSelectedPresetRubric('');
+                            }
+                          }
+                        }}
                         className="w-full h-64 p-4 rounded-xl bg-gray-900/50 border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all duration-300 resize-none text-white"
-                        placeholder="Paste your rubric here or upload a file above..."
+                        placeholder="Paste your rubric here, upload a file above, or select a preset..."
                       />
                     </div>
                   </div>
