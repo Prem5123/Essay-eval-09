@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, Loader2, X, Plus, Download } from 'lucide-react';
+import { Upload, FileText, Loader2, X, Plus, Download, Check, RefreshCw } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker?url';
 import CryptoJS from 'crypto-js';
+import { storeApiKey, retrieveApiKey, removeApiKey, hasStoredApiKey } from '../utils/apiKeyStorage';
+import { useAuth } from '../contexts/AuthContext';
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 const AnimatedBackground = () => (
@@ -199,26 +201,42 @@ const EssayEvaluator = () => {
   const [encryptionKey] = useState(CryptoJS.lib.WordArray.random(16).toString());
   const [rubricText, setRubricText] = useState('');
   const [rubricFile, setRubricFile] = useState(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const { currentUser } = useAuth();
 
+  // Load API key from storage when component mounts or user changes
   useEffect(() => {
-    const encryptedKey = localStorage.getItem('geminiApiKey');
-    if (encryptedKey) {
-      try {
-        const bytes = CryptoJS.AES.decrypt(encryptedKey, encryptionKey);
-        const decryptedKey = bytes.toString(CryptoJS.enc.Utf8);
-        if (decryptedKey) setApiKey(decryptedKey);
-      } catch (err) {
-        console.error('Failed to decrypt API key:', err);
+    if (currentUser) {
+      const storedApiKey = retrieveApiKey(currentUser.uid);
+      if (storedApiKey) {
+        setApiKey(storedApiKey);
+        // We don't automatically set isApiKeyVerified to true
+        // The user should verify the key explicitly
       }
     }
-  }, [encryptionKey]);
+  }, [currentUser]);
 
   const handleApiKeyChange = (e) => {
     const key = e.target.value;
     setApiKey(key);
     setIsApiKeyVerified(false);
-    const encryptedKey = CryptoJS.AES.encrypt(key, encryptionKey).toString();
-    localStorage.setItem('geminiApiKey', encryptedKey);
+    
+    // Store the API key if the user is logged in
+    if (currentUser) {
+      storeApiKey(key, currentUser.uid);
+    }
+  };
+
+  const handleClearApiKey = () => {
+    if (window.confirm('Are you sure you want to clear your API key?')) {
+      setApiKey('');
+      setIsApiKeyVerified(false);
+      
+      // Remove the API key from storage if the user is logged in
+      if (currentUser) {
+        removeApiKey(currentUser.uid);
+      }
+    }
   };
 
   const handleVerifyApiKey = async () => {
@@ -644,26 +662,71 @@ Your current API URL is: ${baseUrl}
             <label className="block text-gray-300 mb-2">Gemini API Key</label>
             <div className="flex flex-col space-y-2">
               <div className="flex items-center space-x-4">
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={handleApiKeyChange}
-                  placeholder="Enter your Gemini API key"
-                  className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-green-400 text-white"
-                />
-                <motion.button
-                  onClick={handleVerifyApiKey}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-4 py-2 bg-green-500 rounded-full"
-                >
-                  Verify
-                </motion.button>
+                <div className="relative flex-grow">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={apiKey}
+                    onChange={handleApiKeyChange}
+                    placeholder="Enter your Gemini API key"
+                    className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-green-400 text-white pr-10"
+                  />
+                  {apiKey && (
+                    <button
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                      title={showApiKey ? "Hide API key" : "Show API key"}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        {showApiKey ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        )}
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <motion.button
+                    onClick={handleVerifyApiKey}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-4 py-2 bg-green-500 rounded-full flex items-center"
+                    title="Verify API key"
+                  >
+                    {isApiKeyVerified ? <Check className="w-4 h-4 mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+                    Verify
+                  </motion.button>
+                  {apiKey && (
+                    <motion.button
+                      onClick={handleClearApiKey}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="px-4 py-2 bg-red-500 rounded-full"
+                      title="Clear API key"
+                    >
+                      <X className="w-4 h-4" />
+                    </motion.button>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-gray-400">
-                Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">Google AI Studio</a>. 
-                Make sure to use a valid Gemini API key that starts with "AI".
-              </p>
+              <div className="flex justify-between items-center">
+                <p className="text-xs text-gray-400">
+                  Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">Google AI Studio</a>. 
+                  Make sure to use a valid Gemini API key that starts with "AI".
+                </p>
+                {currentUser ? (
+                  <p className="text-xs text-gray-400">
+                    {hasStoredApiKey(currentUser.uid) ? 
+                      "Your API key is securely stored" : 
+                      "Your API key will be securely stored"}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    <a href="/login" className="text-green-400 hover:underline">Log in</a> to securely store your API key
+                  </p>
+                )}
+              </div>
               {isApiKeyVerified && <p className="text-green-400 mt-2">API Key Verified ✓</p>}
             </div>
           </FloatingCard>
