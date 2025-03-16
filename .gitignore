@@ -39,3 +39,6 @@ logs/
 
 # Uploads directory
 Backend/uploads/
+
+# Nested frontend directory
+frontend/essay-evaluator/frontend/
