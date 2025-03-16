@@ -1,0 +1,8 @@
+pdfplumber==0.11.5
+python-dotenv
+fastapi
+uvicorn
+python-multipart
+python-docx
+google-generativeai
+reportlab 
