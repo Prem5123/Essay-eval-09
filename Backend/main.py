@@ -166,6 +166,11 @@ async def evaluate_essay(essay_text: str, rubric_text: str | None, api_key: str)
     4. Score each criterion according to its specified scale in the rubric (e.g., 0-10, 0-5, etc.).
     5. The overall_score should be the sum of all individual criteria scores.
     6. Use the EXACT names of the criteria as they appear in the rubric.
+    7. Additionally, identify 3-5 specific passages in the essay that could be improved. For each passage:
+       a. Quote the exact text that needs improvement (keep quotes under 100 characters)
+       b. Explain what specific issue exists in this passage
+       c. Provide a constructive suggestion for how to improve it
+       d. If appropriate, offer a brief example of how the passage could be rewritten
 
     RUBRIC:
     {rubric}
@@ -184,7 +189,15 @@ async def evaluate_essay(essay_text: str, rubric_text: str | None, api_key: str)
                 "feedback": str
             }}
         ],
-        "suggestions": [str]
+        "suggestions": [str],
+        "highlighted_passages": [
+            {{
+                "text": str,
+                "issue": str,
+                "suggestion": str,
+                "example_revision": str
+            }}
+        ]
     }}
     """
     
@@ -251,6 +264,14 @@ async def evaluate_essay(essay_text: str, rubric_text: str | None, api_key: str)
         # Recalculate the overall score based on criteria
         criteria_sum = sum(criterion['score'] for criterion in result['criteria'])
         result['overall_score'] = criteria_sum
+        
+        # Ensure highlighted_passages exists
+        if 'highlighted_passages' not in result:
+            result['highlighted_passages'] = []
+            
+        # Limit to 5 highlighted passages maximum
+        if len(result.get('highlighted_passages', [])) > 5:
+            result['highlighted_passages'] = result['highlighted_passages'][:5]
             
         return result
     except json.JSONDecodeError:
@@ -271,6 +292,7 @@ class PDFReport:
     PINK_COLOR = colors.HexColor('#ec4899')    # Pink
     TEAL_COLOR = colors.HexColor('#14b8a6')    # Teal
     INDIGO_COLOR = colors.HexColor('#6366f1')  # Indigo
+    HIGHLIGHT_COLOR = colors.HexColor('#fef9c3') # Light yellow for highlighting
     
     FONT_NAME = 'Helvetica'
     BOLD_FONT = 'Helvetica-Bold'
@@ -307,6 +329,28 @@ class PDFReport:
         self.styles.add(ParagraphStyle(
             name='SuggestionItem', fontName=self.FONT_NAME, fontSize=10, 
             leftIndent=20, spaceAfter=8, textColor=colors.black
+        ))
+        self.styles.add(ParagraphStyle(
+            name='HighlightTitle', fontName=self.BOLD_FONT, fontSize=14, leading=18,
+            spaceAfter=12, textColor=self.TEAL_COLOR
+        ))
+        self.styles.add(ParagraphStyle(
+            name='HighlightedText', fontName=self.FONT_NAME, fontSize=10, 
+            textColor=colors.black, backColor=self.HIGHLIGHT_COLOR,
+            borderWidth=1, borderColor=colors.HexColor('#fde68a'),
+            borderPadding=5, borderRadius=5
+        ))
+        self.styles.add(ParagraphStyle(
+            name='IssueText', fontName=self.FONT_NAME, fontSize=9, 
+            textColor=self.DANGER_COLOR, leftIndent=10
+        ))
+        self.styles.add(ParagraphStyle(
+            name='SuggestionText', fontName=self.FONT_NAME, fontSize=9, 
+            textColor=self.ACCENT_COLOR, leftIndent=10
+        ))
+        self.styles.add(ParagraphStyle(
+            name='ExampleText', fontName=self.FONT_NAME, fontSize=9, 
+            textColor=self.SUCCESS_COLOR, leftIndent=10, fontStyle='italic'
         ))
         self.styles.add(ParagraphStyle(
             name='Footer', 
@@ -511,6 +555,78 @@ class PDFReport:
         
         return elements
 
+    def _build_highlighted_passages(self, highlighted_passages, elements):
+        if not highlighted_passages:
+            return elements
+            
+        elements.append(Paragraph(
+            f"<font color='{self.TEAL_COLOR.hexval()}'>Highlighted Passages for Improvement</font>",
+            self.styles['HighlightTitle']
+        ))
+        elements.append(Spacer(1, 10))
+        
+        for i, passage in enumerate(highlighted_passages):
+            # Create a table for each highlighted passage
+            passage_data = []
+            
+            # Highlighted text
+            passage_data.append([
+                Paragraph(
+                    f"<b>Highlighted Text {i+1}:</b>",
+                    self.styles['TableBody']
+                )
+            ])
+            passage_data.append([
+                Paragraph(
+                    f"<bgcolor='{self.HIGHLIGHT_COLOR.hexval()}'>{passage['text']}</bgcolor>",
+                    self.styles['HighlightedText']
+                )
+            ])
+            
+            # Issue
+            passage_data.append([
+                Paragraph(
+                    f"<b>Issue:</b> {passage['issue']}",
+                    self.styles['IssueText']
+                )
+            ])
+            
+            # Suggestion
+            passage_data.append([
+                Paragraph(
+                    f"<b>Suggestion:</b> {passage['suggestion']}",
+                    self.styles['SuggestionText']
+                )
+            ])
+            
+            # Example revision (if provided)
+            if passage.get('example_revision'):
+                passage_data.append([
+                    Paragraph(
+                        f"<b>Example Revision:</b> {passage['example_revision']}",
+                        self.styles['ExampleText']
+                    )
+                ])
+            
+            # Create a table for this passage
+            passage_table = Table(
+                passage_data,
+                colWidths=[500],
+                style=[
+                    ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f0fdfa')),  # Light teal for header
+                    ('BACKGROUND', (0, 1), (0, -1), colors.white),
+                    ('BOX', (0, 0), (-1, -1), 1, self.LIGHT_BG),
+                    ('TOPPADDING', (0, 0), (-1, -1), 8),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 12),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+                ]
+            )
+            elements.append(passage_table)
+            elements.append(Spacer(1, 15))
+        
+        return elements
+
     def create(self, data) -> BytesIO:
         buffer = BytesIO()
         
@@ -531,6 +647,11 @@ class PDFReport:
         elements = []
         self._build_header(processed_data, elements)
         self._build_criteria_table(processed_data['criteria'], elements, doc.width)
+        
+        # Add highlighted passages section before general suggestions
+        if processed_data.get('highlighted_passages'):
+            self._build_highlighted_passages(processed_data['highlighted_passages'], elements)
+            
         self._build_suggestions(processed_data['suggestions'], elements)
         
         try:
@@ -570,6 +691,18 @@ class PDFReport:
             s[:500] + "..." if len(s) > 500 else s 
             for s in processed['suggestions']
         ]
+        
+        # Process highlighted passages
+        if 'highlighted_passages' in processed:
+            for passage in processed['highlighted_passages']:
+                if len(passage['text']) > 150:
+                    passage['text'] = passage['text'][:147] + "..."
+                if len(passage['issue']) > 300:
+                    passage['issue'] = passage['issue'][:297] + "..."
+                if len(passage['suggestion']) > 300:
+                    passage['suggestion'] = passage['suggestion'][:297] + "..."
+                if passage.get('example_revision') and len(passage['example_revision']) > 300:
+                    passage['example_revision'] = passage['example_revision'][:297] + "..."
         
         return processed
         
@@ -612,6 +745,27 @@ class PDFReport:
                 self.styles['BodyText']
             ))
             elements.append(Spacer(1, 12))
+        
+        # Simple highlighted passages
+        if data.get('highlighted_passages'):
+            elements.append(Paragraph(
+                f"<font color='{self.TEAL_COLOR.hexval()}'><b>Highlighted Passages:</b></font>",
+                self.styles['Normal']
+            ))
+            for i, passage in enumerate(data['highlighted_passages']):
+                elements.append(Paragraph(
+                    f"<b>{i+1}. Text:</b> {passage['text']}",
+                    self.styles['BodyText']
+                ))
+                elements.append(Paragraph(
+                    f"<b>Issue:</b> {passage['issue']}",
+                    self.styles['BodyText']
+                ))
+                elements.append(Paragraph(
+                    f"<b>Suggestion:</b> {passage['suggestion']}",
+                    self.styles['BodyText']
+                ))
+                elements.append(Spacer(1, 8))
         
         # Simple suggestions
         if data['suggestions']:
