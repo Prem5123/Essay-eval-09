@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AOS from 'aos';
@@ -7,6 +7,9 @@ import 'aos/dist/aos.css';
 const LandingPage = () => {
   const { currentUser, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [typedText, setTypedText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+  const fullText = "AI based essay evaluator";
 
   useEffect(() => {
     AOS.init({
@@ -16,6 +19,28 @@ const LandingPage = () => {
       easing: 'ease-out-cubic',
     });
   }, []);
+
+  useEffect(() => {
+    if (isTyping) {
+      if (typedText.length < fullText.length) {
+        const timeout = setTimeout(() => {
+          setTypedText(fullText.slice(0, typedText.length + 1));
+        }, 100);
+        return () => clearTimeout(timeout);
+      } else {
+        const timeout = setTimeout(() => {
+          setIsTyping(false);
+        }, 1000);
+        return () => clearTimeout(timeout);
+      }
+    } else {
+      const timeout = setTimeout(() => {
+        setTypedText('');
+        setIsTyping(true);
+      }, 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [typedText, isTyping]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -99,8 +124,9 @@ const LandingPage = () => {
                 LitMark
               </span>
             </h1>
-            <p className="text-xl md:text-3xl font-medium mt-4 bg-clip-text text-transparent bg-gradient-to-r from-sky-300 to-emerald-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-              AI based essay evaluator
+            <p className="text-xl md:text-3xl font-medium mt-4 bg-clip-text text-transparent bg-gradient-to-r from-sky-300 to-emerald-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] h-10 flex items-center justify-center">
+              {typedText}
+              <span className={`inline-block w-1 h-8 ml-1 bg-emerald-400 ${isTyping ? 'animate-blink' : ''}`}></span>
             </p>
           </div>
           <p 
