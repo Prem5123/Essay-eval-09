@@ -164,7 +164,7 @@ const ResultItem = ({ result, onDownload }) => (
       <FileText className="w-6 h-6 text-green-400" />
       <div>
         <p className="text-gray-200 font-medium">{result.filename}</p>
-        <p className="text-green-400 font-bold">Score: {result.score}/30</p>
+        <p className="text-green-400 font-bold">Score: {result.score}/{result.totalMark}</p>
       </div>
     </div>
     <motion.button
@@ -184,9 +184,28 @@ const extractScoreFromPdf = async (blob) => {
   const page = await pdf.getPage(1);
   const textContent = await page.getTextContent();
   const text = textContent.items.map((item) => item.str).join(' ');
-  const scoreMatch = text.match(/Score: (\d+)\/30/);
+  
+  // Extract both score and total mark from the PDF
+  const scoreMatch = text.match(/Overall Score: (\d+\.?\d*)\/(\d+)/);
   URL.revokeObjectURL(url);
-  return scoreMatch ? parseInt(scoreMatch[1]) : 0;
+  
+  if (scoreMatch) {
+    return {
+      score: parseFloat(scoreMatch[1]),
+      totalMark: parseInt(scoreMatch[2])
+    };
+  }
+  
+  // Fallback to old pattern if new pattern not found
+  const oldScoreMatch = text.match(/Score: (\d+\.?\d*)\/(\d+)/);
+  if (oldScoreMatch) {
+    return {
+      score: parseFloat(oldScoreMatch[1]),
+      totalMark: parseInt(oldScoreMatch[2])
+    };
+  }
+  
+  return { score: 0, totalMark: 30 }; // Default fallback
 };
 
 const EssayEvaluator = () => {
@@ -456,11 +475,17 @@ const EssayEvaluator = () => {
           
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
-          const score = await extractScoreFromPdf(blob);
+          const scoreData = await extractScoreFromPdf(blob);
           
           setResults((prev) => [
             ...prev,
-            { id: Date.now() + i, filename: file.name, url, score },
+            { 
+              id: Date.now() + i, 
+              filename: file.name, 
+              url, 
+              score: scoreData.score,
+              totalMark: scoreData.totalMark 
+            },
           ]);
         }
       } else {
@@ -483,11 +508,17 @@ const EssayEvaluator = () => {
         
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const score = await extractScoreFromPdf(blob);
+        const scoreData = await extractScoreFromPdf(blob);
         
         setResults((prev) => [
           ...prev,
-          { id: Date.now(), filename: 'Pasted essay', url, score },
+          { 
+            id: Date.now(), 
+            filename: 'Pasted essay', 
+            url, 
+            score: scoreData.score,
+            totalMark: scoreData.totalMark 
+          },
         ]);
         
         setEssayText('');
