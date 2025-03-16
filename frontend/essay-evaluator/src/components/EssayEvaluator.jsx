@@ -237,8 +237,10 @@ const EssayEvaluator = () => {
     }
     
     // Log the API URL being used
-    const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/verify_api_key/`;
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const apiUrl = `${baseUrl}/verify_api_key/`;
     console.log(`Verifying API key using endpoint: ${apiUrl}`);
+    console.log(`Base URL from environment: ${baseUrl}`);
     
     try {
       const formData = new FormData();
@@ -272,6 +274,16 @@ const EssayEvaluator = () => {
           
         } catch (parseError) {
           console.error('Failed to parse error response:', parseError);
+          // If we can't parse the response, try to get the text
+          try {
+            const errorText = await response.text();
+            console.error('Error response text:', errorText);
+            if (response.status === 404) {
+              errorMessage = 'API endpoint not found. Please check your backend URL configuration.';
+            }
+          } catch (textError) {
+            console.error('Failed to get error response text:', textError);
+          }
         }
         setIsApiKeyVerified(false);
         setError(errorMessage);
@@ -279,7 +291,7 @@ const EssayEvaluator = () => {
     } catch (err) {
       console.error('Network error during API key verification:', err);
       setIsApiKeyVerified(false);
-      setError(`Failed to verify API key: ${err.message}. Please check your internet connection.`);
+      setError(`Failed to verify API key: ${err.message}. Please check your internet connection and backend URL configuration.`);
     }
   };
 
@@ -303,7 +315,8 @@ const EssayEvaluator = () => {
     
     try {
       // Use the new dedicated endpoint for rubric file uploads
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/upload-rubric-file/`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${baseUrl}/upload-rubric-file/`, {
         method: 'POST',
         body: formData,
       });
@@ -332,6 +345,9 @@ const EssayEvaluator = () => {
         throw new Error('Please enter your essay text.');
       }
       
+      // Get base URL
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
       // Prepare common form data
       const prepareFormData = () => {
         const formData = new FormData();
@@ -354,7 +370,7 @@ const EssayEvaluator = () => {
           const formData = prepareFormData();
           formData.append('essay', file);
           
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/evaluate/`, {
+          const response = await fetch(`${baseUrl}/evaluate/`, {
             method: 'POST',
             body: formData,
           });
@@ -381,7 +397,7 @@ const EssayEvaluator = () => {
         const essayBlob = new Blob([essayText], { type: 'text/plain' });
         formData.append('essay', essayBlob, 'essay.txt');
         
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/evaluate/`, {
+        const response = await fetch(`${baseUrl}/evaluate/`, {
           method: 'POST',
           body: formData,
         });
@@ -427,6 +443,10 @@ const EssayEvaluator = () => {
           <AnimatedHeading />
           <motion.p className="text-center text-gray-300 text-xl mt-4">
             Advanced essay analysis powered by AI
+          </motion.p>
+          {/* API URL Debug Info */}
+          <motion.p className="text-center text-gray-500 text-xs mt-2">
+            API: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}
           </motion.p>
         </div>
         <div className="max-w-4xl mx-auto space-y-8">
