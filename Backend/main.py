@@ -21,14 +21,20 @@ import uuid
 load_dotenv()
 
 # Create uploads directory if it doesn't exist
-os.makedirs("Backend/uploads", exist_ok=True)
-os.makedirs("Backend/rubrics", exist_ok=True)
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("rubrics", exist_ok=True)
 
 # Initialize FastAPI app with CORS
 app = FastAPI()
+
+# Get allowed origins from environment or use defaults
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+origins = allowed_origins.split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
 )
@@ -624,7 +630,7 @@ class PDFReport:
 def get_saved_rubrics():
     """Get list of saved rubrics."""
     rubrics = []
-    rubrics_dir = "Backend/rubrics"
+    rubrics_dir = "rubrics"
     
     if os.path.exists(rubrics_dir):
         for filename in os.listdir(rubrics_dir):
@@ -653,7 +659,7 @@ def save_rubric(content: str, rubric_id: Optional[str] = None) -> str:
     if not rubric_id:
         rubric_id = str(uuid.uuid4())
     
-    with open(f"Backend/rubrics/{rubric_id}.txt", "w") as f:
+    with open(f"rubrics/{rubric_id}.txt", "w") as f:
         f.write(content)
     
     return rubric_id
@@ -661,7 +667,7 @@ def save_rubric(content: str, rubric_id: Optional[str] = None) -> str:
 def get_rubric_by_id(rubric_id: str) -> str:
     """Get rubric content by ID."""
     try:
-        with open(f"Backend/rubrics/{rubric_id}.txt", "r") as f:
+        with open(f"rubrics/{rubric_id}.txt", "r") as f:
             return f.read()
     except FileNotFoundError:
         raise ValueError(f"Rubric with ID {rubric_id} not found")
@@ -669,7 +675,7 @@ def get_rubric_by_id(rubric_id: str) -> str:
 def delete_rubric(rubric_id: str) -> bool:
     """Delete a rubric by ID."""
     try:
-        os.remove(f"Backend/rubrics/{rubric_id}.txt")
+        os.remove(f"rubrics/{rubric_id}.txt")
         return True
     except FileNotFoundError:
         return False
@@ -895,4 +901,5 @@ async def upload_rubric_file(file: UploadFile):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
