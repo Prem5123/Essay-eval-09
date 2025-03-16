@@ -6,6 +6,6 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "start": "python app.py"
+    "start": "bash ./start.sh"
   }
 } 

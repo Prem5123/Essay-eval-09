@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ["python310"]
+nixPkgs = ["python310", "gcc", "python310Packages.pip", "python310Packages.setuptools", "python310Packages.wheel", "bash"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = ["bash ./install.sh"]
 
 [phases.build]
 cmds = []
 
 [start]
-cmd = "python app.py" 
+cmd = "bash ./start.sh" 
