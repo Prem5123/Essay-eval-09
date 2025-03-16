@@ -29,10 +29,9 @@ A modern web application for evaluating essays using AI, with custom rubrics and
    npm install
    ```
 
-### Firebase Setup for Authentication
+### Firebase Setup
 
-To enable Google Sign-In, you need to set up Firebase:
-
+#### Authentication
 1. Go to the [Firebase Console](https://console.firebase.google.com/)
 2. Create a new project
 3. Add a web app to your project
@@ -42,19 +41,23 @@ To enable Google Sign-In, you need to set up Firebase:
 5. Get your Firebase configuration:
    - Go to Project Settings > General > Your Apps > Firebase SDK snippet
    - Select "Config" and copy the configuration object
-6. Update the Firebase configuration in `src/firebase.js` with your own credentials:
+6. Update the Firebase configuration in `src/firebase.js` with your own credentials
 
-```javascript
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID" // optional
-};
-```
+#### Storage Setup
+1. In the Firebase Console, go to "Storage"
+2. Click "Get Started" and follow the setup wizard
+3. Set up security rules for your storage bucket:
+   ```
+   rules_version = '2';
+   service firebase.storage {
+     match /b/{bucket}/o {
+       match /{allPaths=**} {
+         allow read, write: if request.auth != null;
+       }
+     }
+   }
+   ```
+4. Make sure your Firebase configuration in `src/firebase.js` includes the correct `storageBucket` value
 
 ### Running the Application
 
@@ -78,7 +81,43 @@ Detailed backend setup instructions can be found in the Backend directory's READ
 
 ## Deployment
 
-Instructions for deploying the application to production will be added soon.
+### Frontend (Vercel)
+1. Push your code to GitHub
+2. Create a new project on Vercel
+3. Connect your GitHub repository
+4. Set the root directory to `frontend/essay-evaluator`
+5. Add environment variables:
+   - `VITE_API_URL`: Your Railway backend URL
+   - All Firebase configuration variables (API key, auth domain, etc.)
+6. Deploy the project
+
+### Backend (Railway)
+1. Push your code to GitHub
+2. Create a new project on Railway
+3. Connect your GitHub repository
+4. Railway will automatically detect the `railway.json` file and configure the deployment
+5. Add environment variables:
+   - `ALLOWED_ORIGINS`: Your Vercel frontend URL (comma-separated if multiple)
+6. Deploy the service
+
+Railway provides persistent storage out of the box, so your uploaded files and rubrics will be preserved between deployments.
+
+## How It Works
+
+This application uses a modern architecture with:
+
+1. **React Frontend**: Built with React and Vite for a fast, responsive user interface
+2. **FastAPI Backend**: Python-based API for essay evaluation and rubric management
+3. **Railway Deployment**: Provides persistent storage for uploaded files and rubrics
+4. **Firebase Authentication**: Secure user authentication with email/password and Google Sign-In
+
+The workflow is:
+1. Users upload essays and rubrics through the frontend
+2. Files are sent to the backend for processing
+3. The backend uses Google's Generative AI to evaluate essays
+4. Results are returned to the frontend and can be downloaded as PDF reports
+
+Railway's persistent storage ensures that uploaded files and saved rubrics are preserved between deployments, providing a seamless experience for users.
 
 ## Contributing
 
