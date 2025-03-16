@@ -262,29 +262,38 @@ const EssayEvaluator = () => {
         alert('API key verified successfully!');
       } else {
         let errorMessage = 'Invalid API key. Please check and try again.';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-          console.error('API key verification failed:', errorData);
-          
-          // Provide more helpful guidance based on error
-          if (errorMessage.includes('invalid API key') || errorMessage.includes('Invalid API key')) {
-            errorMessage += ' Make sure you\'re using a key from Google AI Studio (https://aistudio.google.com/app/apikey).';
-          }
-          
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
-          // If we can't parse the response, try to get the text
+        
+        // Handle 404 errors specifically
+        if (response.status === 404) {
+          errorMessage = `API endpoint not found (404). Please check your backend URL configuration: ${baseUrl}`;
+          console.error('404 error - API endpoint not found');
+        } else {
+          // For other errors, try to parse the JSON response
           try {
-            const errorText = await response.text();
-            console.error('Error response text:', errorText);
-            if (response.status === 404) {
-              errorMessage = 'API endpoint not found. Please check your backend URL configuration.';
+            // Clone the response before reading it
+            const clonedResponse = response.clone();
+            const errorData = await clonedResponse.json();
+            errorMessage = errorData.detail || errorMessage;
+            console.error('API key verification failed:', errorData);
+            
+            // Provide more helpful guidance based on error
+            if (errorMessage.includes('invalid API key') || errorMessage.includes('Invalid API key')) {
+              errorMessage += ' Make sure you\'re using a key from Google AI Studio (https://aistudio.google.com/app/apikey).';
             }
-          } catch (textError) {
-            console.error('Failed to get error response text:', textError);
+          } catch (parseError) {
+            console.error('Failed to parse error response as JSON:', parseError);
+            
+            // Only try to read as text if JSON parsing failed
+            try {
+              const textResponse = response.clone();
+              const errorText = await textResponse.text();
+              console.error('Error response text:', errorText);
+            } catch (textError) {
+              console.error('Failed to get error response text:', textError);
+            }
           }
         }
+        
         setIsApiKeyVerified(false);
         setError(errorMessage);
       }
@@ -435,6 +444,31 @@ const EssayEvaluator = () => {
     document.body.removeChild(a);
   };
 
+  // Add a function to test API connectivity
+  const testApiConnection = async () => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    setError(null);
+    
+    try {
+      // Just try to fetch the base URL to see if it's reachable
+      const response = await fetch(`${baseUrl}/`, {
+        method: 'GET',
+      });
+      
+      console.log(`API connection test - Status: ${response.status}`);
+      
+      if (response.ok || response.status === 404) {
+        // Even a 404 means we reached the server
+        alert(`Successfully connected to API server at ${baseUrl}`);
+      } else {
+        alert(`Connected to server but received status ${response.status}`);
+      }
+    } catch (err) {
+      console.error('API connection test failed:', err);
+      setError(`Failed to connect to API server at ${baseUrl}: ${err.message}`);
+    }
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden pt-16">
       <AnimatedBackground />
@@ -445,9 +479,17 @@ const EssayEvaluator = () => {
             Advanced essay analysis powered by AI
           </motion.p>
           {/* API URL Debug Info */}
-          <motion.p className="text-center text-gray-500 text-xs mt-2">
-            API: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}
-          </motion.p>
+          <motion.div className="text-center mt-2 p-2 bg-gray-800/80 rounded-lg inline-block mx-auto">
+            <p className="text-gray-400 text-xs">
+              API URL: <span className="text-green-400 font-mono">{import.meta.env.VITE_API_URL || 'http://localhost:8000'}</span>
+              <button 
+                onClick={testApiConnection}
+                className="ml-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-white"
+              >
+                Test Connection
+              </button>
+            </p>
+          </motion.div>
         </div>
         <div className="max-w-4xl mx-auto space-y-8">
           <FloatingCard>
