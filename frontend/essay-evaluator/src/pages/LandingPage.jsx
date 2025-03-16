@@ -96,11 +96,11 @@ const LandingPage = () => {
           >
             <h1 className="text-3xl md:text-5xl font-bold leading-tight">
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-violet-400 to-emerald-400 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
-                Essay Evaluator
+                LitMark
               </span>
             </h1>
             <p className="text-xl md:text-2xl font-medium mt-3 bg-clip-text text-transparent bg-gradient-to-r from-sky-300 to-emerald-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-              Transform Your Writing with AI
+              AI-based essay marker
             </p>
           </div>
           <p 
@@ -108,7 +108,7 @@ const LandingPage = () => {
             data-aos="fade-up"
             data-aos-delay="200"
           >
-            Get detailed feedback, personalized suggestions, and professional evaluations for your essays in minutes.
+            Reduce your time and maintain the quality of feedback with our advanced AI evaluation system.
           </p>
           <div 
             className="flex flex-col sm:flex-row justify-center gap-4"
@@ -301,10 +301,10 @@ const LandingPage = () => {
         >
           <div className="max-w-3xl mx-auto bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-md p-10 rounded-2xl border border-slate-700 shadow-xl">
             <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-violet-400 to-emerald-400 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
-              Ready to Transform Your Writing?
+              Ready to Save Time on Essay Marking?
             </h2>
             <p className="text-lg max-w-2xl mx-auto mb-10 text-slate-300">
-              Join thousands of students and educators who are already using our AI-powered essay evaluation tool.
+              Join thousands of educators who are already using LitMark's AI-powered essay evaluation tool.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               {currentUser ? (
@@ -353,7 +353,7 @@ const LandingPage = () => {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-violet-400 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
-                Essay Evaluator
+                LitMark
               </h3>
             </div>
             <div className="flex space-x-6">
@@ -368,7 +368,7 @@ const LandingPage = () => {
               </a>
             </div>
             <div className="mt-4 md:mt-0 text-slate-500">
-              &copy; {new Date().getFullYear()} Essay Evaluator. All rights reserved.
+              &copy; {new Date().getFullYear()} LitMark. All rights reserved.
             </div>
           </div>
         </div>

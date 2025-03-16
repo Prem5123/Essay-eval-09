@@ -48,7 +48,7 @@ const Navbar = () => {
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0">
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-                Essay Evaluator
+                LitMark
               </h1>
             </Link>
           </div>

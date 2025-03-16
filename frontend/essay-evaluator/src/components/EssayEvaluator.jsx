@@ -31,7 +31,7 @@ const AnimatedHeading = () => (
     transition={{ duration: 0.8 }}
     className="text-5xl md:text-6xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500"
   >
-    Essay Evaluator
+    LitMark
   </motion.h1>
 );
 
@@ -643,7 +643,7 @@ Your current API URL is: ${baseUrl}
         <div className="mb-12">
           <AnimatedHeading />
           <motion.p className="text-center text-gray-300 text-xl mt-4">
-            Advanced essay analysis powered by AI
+            AI-based essay marker - save time, maintain quality
           </motion.p>
           {/* API URL Debug Info */}
           <motion.div className="text-center mt-2 p-2 bg-gray-800/80 rounded-lg inline-block mx-auto">
