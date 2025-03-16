@@ -643,10 +643,10 @@ Your current API URL is: ${baseUrl}
         <div className="mb-12">
           <AnimatedHeading />
           <motion.p className="text-center text-gray-300 text-xl mt-4">
-            AI-based essay marker - save time, maintain quality
+            AI based essay evaluator
           </motion.p>
           {/* API URL Debug Info */}
-          <motion.div className="text-center mt-2 p-2 bg-gray-800/80 rounded-lg inline-block mx-auto">
+          <motion.div className="text-center mt-2 p-2 bg-gray-800/50 rounded-lg inline-block mx-auto">
             <p className="text-gray-400 text-xs">
               API URL: <span className="text-green-400 font-mono">
                 {import.meta.env.VITE_API_URL ? 
@@ -660,17 +660,6 @@ Your current API URL is: ${baseUrl}
                 className="ml-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-white"
               >
                 Test Connection
-              </button>
-              <button 
-                onClick={() => {
-                  const url = prompt("Enter the exact Railway URL to test:", "https://essay-eval-09-production.up.railway.app");
-                  if (url) {
-                    window.open(url, '_blank');
-                  }
-                }}
-                className="ml-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-white"
-              >
-                Open Railway URL
               </button>
             </p>
           </motion.div>
