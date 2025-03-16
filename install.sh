@@ -28,13 +28,49 @@ fi
 echo "Updating pip..."
 python3 -m pip install --upgrade pip || echo "Failed to upgrade pip"
 
-echo "Installing requirements..."
-if ! python3 -m pip install -r requirements.txt; then
-    echo "Bulk installation failed, trying one by one..."
-    while read -r package; do
-        # Skip empty lines and comments
-        [[ -z "$package" || "$package" =~ ^#.*$ ]] && continue
-        echo "Installing $package..."
-        python3 -m pip install "$package" || echo "Failed to install $package"
-    done < requirements.txt
-fi
+# Install virtualenv
+echo "Installing virtualenv..."
+python3 -m pip install virtualenv
+
+# Create and activate virtual environment
+echo "Creating virtual environment..."
+python3 -m virtualenv venv
+echo "Activating virtual environment..."
+source venv/bin/activate
+
+echo "Installing requirements in virtual environment..."
+pip install -r requirements.txt
+
+# Verify installations
+echo "Verifying installations..."
+python -c "import fastapi; print(f'FastAPI version: {fastapi.__version__}')" || echo "FastAPI not installed correctly"
+python -c "import uvicorn; print(f'Uvicorn version: {uvicorn.__version__}')" || echo "Uvicorn not installed correctly"
+python -c "import pydantic; print(f'Pydantic version: {pydantic.__version__}')" || echo "Pydantic not installed correctly"
+
+# Create a simple test file to verify imports
+cat > test_imports.py << EOF
+try:
+    import fastapi
+    import uvicorn
+    import pydantic
+    import pdfplumber
+    import python_multipart
+    import docx
+    import google.generativeai
+    import reportlab
+    import gunicorn
+    print("All imports successful!")
+except ImportError as e:
+    print(f"Import error: {e}")
+EOF
+
+echo "Testing imports..."
+python test_imports.py
+
+# Create a script to activate the virtual environment
+cat > activate_venv.sh << EOF
+#!/bin/bash
+source venv/bin/activate
+EOF
+
+chmod +x activate_venv.sh

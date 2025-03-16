@@ -5,6 +5,12 @@ echo "Current directory: $(pwd)"
 echo "Listing files in current directory:"
 ls -la
 
+# Activate virtual environment if it exists
+if [ -f "./activate_venv.sh" ]; then
+    echo "Activating virtual environment..."
+    source ./activate_venv.sh
+fi
+
 echo "Checking if Backend directory exists:"
 if [ -d "Backend" ]; then
     echo "Backend directory found"
@@ -20,4 +26,4 @@ echo "Listing files in Backend directory:"
 ls -la
 
 echo "Starting application..."
-python3 main.py
+python main.py
