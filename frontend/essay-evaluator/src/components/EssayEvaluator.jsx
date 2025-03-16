@@ -449,24 +449,39 @@ const EssayEvaluator = () => {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     setError(null);
     
-    try {
-      // Just try to fetch the base URL to see if it's reachable
-      const response = await fetch(`${baseUrl}/`, {
-        method: 'GET',
-      });
-      
-      console.log(`API connection test - Status: ${response.status}`);
-      
-      if (response.ok || response.status === 404) {
-        // Even a 404 means we reached the server
-        alert(`Successfully connected to API server at ${baseUrl}`);
-      } else {
-        alert(`Connected to server but received status ${response.status}`);
+    // Test URLs with different variations
+    const testUrls = [
+      baseUrl,
+      baseUrl.replace('https://', 'http://'),
+      `${baseUrl}:8000`,
+      `${baseUrl}:8080`,
+      baseUrl.replace('https://', 'http://') + ':8000',
+      baseUrl.replace('https://', 'http://') + ':8080'
+    ];
+    
+    console.log("Testing the following URLs:");
+    testUrls.forEach(url => console.log(`- ${url}`));
+    
+    const results = [];
+    
+    for (const url of testUrls) {
+      try {
+        console.log(`Testing connection to: ${url}`);
+        const response = await fetch(`${url}/`, {
+          method: 'GET',
+        });
+        
+        console.log(`Response from ${url}: Status ${response.status}`);
+        results.push(`${url}: Status ${response.status}`);
+        
+      } catch (err) {
+        console.error(`Failed to connect to ${url}:`, err);
+        results.push(`${url}: Error - ${err.message}`);
       }
-    } catch (err) {
-      console.error('API connection test failed:', err);
-      setError(`Failed to connect to API server at ${baseUrl}: ${err.message}`);
     }
+    
+    // Display results
+    alert(`API Connection Test Results:\n\n${results.join('\n')}`);
   };
 
   return (
