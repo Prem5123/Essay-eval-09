@@ -451,12 +451,10 @@ const EssayEvaluator = () => {
     
     // Test URLs with different variations
     const testUrls = [
-      baseUrl,
-      baseUrl.replace('https://', 'http://'),
-      `${baseUrl}:8000`,
-      `${baseUrl}:8080`,
-      baseUrl.replace('https://', 'http://') + ':8000',
-      baseUrl.replace('https://', 'http://') + ':8080'
+      `https://${baseUrl.replace('https://', '')}`,
+      `http://${baseUrl.replace('https://', '').replace('http://', '')}`,
+      `https://${baseUrl.replace('https://', '')}/verify_api_key/`,
+      `http://${baseUrl.replace('https://', '').replace('http://', '')}/verify_api_key/`
     ];
     
     console.log("Testing the following URLs:");
@@ -467,12 +465,33 @@ const EssayEvaluator = () => {
     for (const url of testUrls) {
       try {
         console.log(`Testing connection to: ${url}`);
-        const response = await fetch(`${url}/`, {
+        
+        // Add a timeout to the fetch request
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(url, {
           method: 'GET',
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json, text/plain, */*'
+          }
         });
         
+        clearTimeout(timeoutId);
+        
         console.log(`Response from ${url}: Status ${response.status}`);
-        results.push(`${url}: Status ${response.status}`);
+        
+        // Try to get response text for more details
+        let responseText = '';
+        try {
+          responseText = await response.text();
+          responseText = responseText.substring(0, 100) + (responseText.length > 100 ? '...' : '');
+        } catch (textError) {
+          responseText = 'Could not read response text';
+        }
+        
+        results.push(`${url}: Status ${response.status} - ${responseText}`);
         
       } catch (err) {
         console.error(`Failed to connect to ${url}:`, err);
@@ -481,7 +500,22 @@ const EssayEvaluator = () => {
     }
     
     // Display results
-    alert(`API Connection Test Results:\n\n${results.join('\n')}`);
+    alert(`API Connection Test Results:\n\n${results.join('\n\n')}`);
+    
+    // Suggest next steps based on results
+    if (results.every(r => r.includes('Error') || r.includes('404'))) {
+      alert(`
+Troubleshooting suggestions:
+
+1. Check if your Railway app is deployed and running
+2. Verify the correct URL in your Railway dashboard
+3. Make sure your FastAPI backend is properly configured
+4. Check if your Railway service is exposed to the internet
+5. Try accessing the Railway URL directly in a browser
+
+Your current API URL is: ${baseUrl}
+      `);
+    }
   };
 
   return (
@@ -502,6 +536,17 @@ const EssayEvaluator = () => {
                 className="ml-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-white"
               >
                 Test Connection
+              </button>
+              <button 
+                onClick={() => {
+                  const url = prompt("Enter the exact Railway URL to test:", "https://essay-eval-09-production.up.railway.app");
+                  if (url) {
+                    window.open(url, '_blank');
+                  }
+                }}
+                className="ml-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-white"
+              >
+                Open Railway URL
               </button>
             </p>
           </motion.div>
