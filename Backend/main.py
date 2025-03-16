@@ -31,9 +31,10 @@ app = FastAPI()
 allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
 origins = allowed_origins.split(",")
 
+# For debugging, allow all origins temporarily
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Allow all origins temporarily
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -685,11 +686,14 @@ def delete_rubric(rubric_id: str) -> bool:
 async def verify_api_key(api_key: str = Form(...)):
     """Verify the Gemini API key."""
     try:
+        print(f"Attempting to verify API key: {api_key[:5]}...")  # Print first 5 chars for security
         genai.configure(api_key=api_key)
-        genai.list_models()  # Test the API key
+        models = genai.list_models()  # Test the API key
+        print(f"API key verification successful. Found {len(models)} models.")
         return {"status": "success", "message": "API key is valid"}
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid API key")
+    except Exception as e:
+        print(f"API key verification failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid API key: {str(e)}")
 
 @app.post("/evaluate/")
 async def evaluate_essay_endpoint(

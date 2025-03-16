@@ -227,28 +227,45 @@ const EssayEvaluator = () => {
       setError('Please enter an API key to verify.');
       return;
     }
+    
+    // Log the API URL being used
+    const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/verify_api_key/`;
+    console.log(`Verifying API key using endpoint: ${apiUrl}`);
+    
     try {
       const formData = new FormData();
       formData.append('api_key', apiKey);
       
       // Use the API utility instead of hardcoded URL
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/verify_api_key/`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
       });
       
+      console.log(`Response status: ${response.status}`);
+      
       if (response.ok) {
+        const data = await response.json();
+        console.log('API key verification successful:', data);
         setIsApiKeyVerified(true);
         setError(null);
         alert('API key verified successfully!');
       } else {
-        const errorData = await response.json();
+        let errorMessage = 'Invalid API key. Please check and try again.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+          console.error('API key verification failed:', errorData);
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
         setIsApiKeyVerified(false);
-        setError(errorData.detail || 'Invalid API key. Please check and try again.');
+        setError(errorMessage);
       }
     } catch (err) {
+      console.error('Network error during API key verification:', err);
       setIsApiKeyVerified(false);
-      setError('Failed to verify API key. Please try again.');
+      setError(`Failed to verify API key: ${err.message}`);
     }
   };
 
