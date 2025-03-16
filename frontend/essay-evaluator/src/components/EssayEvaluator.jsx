@@ -236,22 +236,36 @@ const EssayEvaluator = () => {
       return;
     }
     
-    // Log the API URL being used
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    // Ensure we have the correct URL format
+    let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    
+    // Make sure the URL has the https:// prefix
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://' + baseUrl;
+    }
+    
     const apiUrl = `${baseUrl}/verify_api_key/`;
     console.log(`Verifying API key using endpoint: ${apiUrl}`);
-    console.log(`Base URL from environment: ${baseUrl}`);
     
     try {
       const formData = new FormData();
       formData.append('api_key', apiKey);
       
+      // Add a timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       // Use the API utility instead of hardcoded URL
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json'
+        }
       });
       
+      clearTimeout(timeoutId);
       console.log(`Response status: ${response.status}`);
       
       if (response.ok) {
@@ -267,6 +281,9 @@ const EssayEvaluator = () => {
         if (response.status === 404) {
           errorMessage = `API endpoint not found (404). Please check your backend URL configuration: ${baseUrl}`;
           console.error('404 error - API endpoint not found');
+        } else if (response.status === 405) {
+          errorMessage = `Method not allowed (405). The API endpoint exists but doesn't accept this request method.`;
+          console.error('405 error - Method not allowed');
         } else {
           // For other errors, try to parse the JSON response
           try {
@@ -323,8 +340,15 @@ const EssayEvaluator = () => {
     formData.append('file', file);
     
     try {
+      // Ensure we have the correct URL format
+      let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      // Make sure the URL has the https:// prefix
+      if (!baseUrl.startsWith('http')) {
+        baseUrl = 'https://' + baseUrl;
+      }
+      
       // Use the new dedicated endpoint for rubric file uploads
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const response = await fetch(`${baseUrl}/upload-rubric-file/`, {
         method: 'POST',
         body: formData,
@@ -354,8 +378,13 @@ const EssayEvaluator = () => {
         throw new Error('Please enter your essay text.');
       }
       
-      // Get base URL
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      // Ensure we have the correct URL format
+      let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      // Make sure the URL has the https:// prefix
+      if (!baseUrl.startsWith('http')) {
+        baseUrl = 'https://' + baseUrl;
+      }
       
       // Prepare common form data
       const prepareFormData = () => {
@@ -452,9 +481,7 @@ const EssayEvaluator = () => {
     // Test URLs with different variations
     const testUrls = [
       `https://${baseUrl.replace('https://', '')}`,
-      `http://${baseUrl.replace('https://', '').replace('http://', '')}`,
-      `https://${baseUrl.replace('https://', '')}/verify_api_key/`,
-      `http://${baseUrl.replace('https://', '').replace('http://', '')}/verify_api_key/`
+      `http://${baseUrl.replace('https://', '').replace('http://', '')}`
     ];
     
     console.log("Testing the following URLs:");
@@ -462,6 +489,7 @@ const EssayEvaluator = () => {
     
     const results = [];
     
+    // First test basic connectivity to the root endpoints
     for (const url of testUrls) {
       try {
         console.log(`Testing connection to: ${url}`);
@@ -499,11 +527,65 @@ const EssayEvaluator = () => {
       }
     }
     
+    // Now test the verify_api_key endpoint with POST method
+    const apiUrl = `https://${baseUrl.replace('https://', '')}/verify_api_key/`;
+    try {
+      console.log(`Testing API endpoint with POST: ${apiUrl}`);
+      
+      const formData = new FormData();
+      formData.append('api_key', 'AI_TEST_KEY_FOR_CONNECTION_TEST');
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log(`Response from POST ${apiUrl}: Status ${response.status}`);
+      
+      // Try to get response text for more details
+      let responseText = '';
+      try {
+        responseText = await response.text();
+        responseText = responseText.substring(0, 100) + (responseText.length > 100 ? '...' : '');
+      } catch (textError) {
+        responseText = 'Could not read response text';
+      }
+      
+      results.push(`${apiUrl} (POST): Status ${response.status} - ${responseText}`);
+      
+    } catch (err) {
+      console.error(`Failed to connect to ${apiUrl} with POST:`, err);
+      results.push(`${apiUrl} (POST): Error - ${err.message}`);
+    }
+    
     // Display results
     alert(`API Connection Test Results:\n\n${results.join('\n\n')}`);
     
-    // Suggest next steps based on results
-    if (results.every(r => r.includes('Error') || r.includes('404'))) {
+    // Check if we got a successful connection
+    const hasSuccessfulConnection = results.some(r => 
+      (r.includes('Status 200') || r.includes('Status 400') || r.includes('Status 405'))
+    );
+    
+    if (hasSuccessfulConnection) {
+      alert(`
+Good news! Your Railway backend is accessible. 
+
+The 405 error means "Method Not Allowed" which indicates the server is running but you might be using the wrong HTTP method for some endpoints.
+
+Your API URL is correctly set to: ${baseUrl}
+
+Try verifying your API key now - it should work!
+      `);
+    } else {
       alert(`
 Troubleshooting suggestions:
 
@@ -530,7 +612,13 @@ Your current API URL is: ${baseUrl}
           {/* API URL Debug Info */}
           <motion.div className="text-center mt-2 p-2 bg-gray-800/80 rounded-lg inline-block mx-auto">
             <p className="text-gray-400 text-xs">
-              API URL: <span className="text-green-400 font-mono">{import.meta.env.VITE_API_URL || 'http://localhost:8000'}</span>
+              API URL: <span className="text-green-400 font-mono">
+                {import.meta.env.VITE_API_URL ? 
+                  (import.meta.env.VITE_API_URL.startsWith('http') ? 
+                    import.meta.env.VITE_API_URL : 
+                    'https://' + import.meta.env.VITE_API_URL) : 
+                  'http://localhost:8000'}
+              </span>
               <button 
                 onClick={testApiConnection}
                 className="ml-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-white"
