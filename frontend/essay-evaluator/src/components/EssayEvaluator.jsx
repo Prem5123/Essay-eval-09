@@ -230,10 +230,13 @@ const EssayEvaluator = () => {
     try {
       const formData = new FormData();
       formData.append('api_key', apiKey);
-      const response = await fetch('http://localhost:8000/verify_api_key/', {
+      
+      // Use the API utility instead of hardcoded URL
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/verify_api_key/`, {
         method: 'POST',
         body: formData,
       });
+      
       if (response.ok) {
         setIsApiKeyVerified(true);
         setError(null);
@@ -269,7 +272,7 @@ const EssayEvaluator = () => {
     
     try {
       // Use the new dedicated endpoint for rubric file uploads
-      const response = await fetch('http://localhost:8000/upload-rubric-file/', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/upload-rubric-file/`, {
         method: 'POST',
         body: formData,
       });
@@ -320,7 +323,7 @@ const EssayEvaluator = () => {
           const formData = prepareFormData();
           formData.append('essay', file);
           
-          const response = await fetch('http://localhost:8000/evaluate/', {
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/evaluate/`, {
             method: 'POST',
             body: formData,
           });
@@ -347,7 +350,7 @@ const EssayEvaluator = () => {
         const essayBlob = new Blob([essayText], { type: 'text/plain' });
         formData.append('essay', essayBlob, 'essay.txt');
         
-        const response = await fetch('http://localhost:8000/evaluate/', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/evaluate/`, {
           method: 'POST',
           body: formData,
         });
