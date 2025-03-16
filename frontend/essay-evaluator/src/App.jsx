@@ -12,6 +12,7 @@ import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ManualLogin from './pages/ManualLogin';
+import AdminDashboard from './pages/AdminDashboard';
 import Navbar from './components/Navbar';
 
 // Original App component renamed to EssayEvaluator
@@ -219,6 +220,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/manual-login" element={<ManualLogin />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route 
           path="/app" 
           element={
