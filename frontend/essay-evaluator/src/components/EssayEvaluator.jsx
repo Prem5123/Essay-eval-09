@@ -223,8 +223,16 @@ const EssayEvaluator = () => {
 
   const handleVerifyApiKey = async () => {
     setError(null);
+    
+    // Basic validation
     if (!apiKey.trim()) {
       setError('Please enter an API key to verify.');
+      return;
+    }
+    
+    // Check if it looks like a Gemini API key
+    if (!apiKey.trim().startsWith('AI')) {
+      setError('This doesn\'t look like a valid Gemini API key. Gemini API keys typically start with "AI".');
       return;
     }
     
@@ -256,6 +264,12 @@ const EssayEvaluator = () => {
           const errorData = await response.json();
           errorMessage = errorData.detail || errorMessage;
           console.error('API key verification failed:', errorData);
+          
+          // Provide more helpful guidance based on error
+          if (errorMessage.includes('invalid API key') || errorMessage.includes('Invalid API key')) {
+            errorMessage += ' Make sure you\'re using a key from Google AI Studio (https://aistudio.google.com/app/apikey).';
+          }
+          
         } catch (parseError) {
           console.error('Failed to parse error response:', parseError);
         }
@@ -265,7 +279,7 @@ const EssayEvaluator = () => {
     } catch (err) {
       console.error('Network error during API key verification:', err);
       setIsApiKeyVerified(false);
-      setError(`Failed to verify API key: ${err.message}`);
+      setError(`Failed to verify API key: ${err.message}. Please check your internet connection.`);
     }
   };
 
@@ -418,24 +432,30 @@ const EssayEvaluator = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           <FloatingCard>
             <label className="block text-gray-300 mb-2">Gemini API Key</label>
-            <div className="flex items-center space-x-4">
-              <input
-                type="password"
-                value={apiKey}
-                onChange={handleApiKeyChange}
-                placeholder="Enter your Gemini API key"
-                className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-green-400 text-white"
-              />
-              <motion.button
-                onClick={handleVerifyApiKey}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-4 py-2 bg-green-500 rounded-full"
-              >
-                Verify
-              </motion.button>
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center space-x-4">
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={handleApiKeyChange}
+                  placeholder="Enter your Gemini API key"
+                  className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-green-400 text-white"
+                />
+                <motion.button
+                  onClick={handleVerifyApiKey}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-4 py-2 bg-green-500 rounded-full"
+                >
+                  Verify
+                </motion.button>
+              </div>
+              <p className="text-xs text-gray-400">
+                Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">Google AI Studio</a>. 
+                Make sure to use a valid Gemini API key that starts with "AI".
+              </p>
+              {isApiKeyVerified && <p className="text-green-400 mt-2">API Key Verified ✓</p>}
             </div>
-            {isApiKeyVerified && <p className="text-green-400 mt-2">API Key Verified</p>}
           </FloatingCard>
           <div className="flex justify-center space-x-4 mb-6">
             <motion.button

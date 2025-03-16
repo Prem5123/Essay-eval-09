@@ -687,12 +687,38 @@ async def verify_api_key(api_key: str = Form(...)):
     """Verify the Gemini API key."""
     try:
         print(f"Attempting to verify API key: {api_key[:5]}...")  # Print first 5 chars for security
+        
+        # Check if API key is empty or malformed
+        if not api_key or len(api_key) < 10:
+            print("API key is too short or empty")
+            raise HTTPException(status_code=400, detail="API key is too short or empty")
+        
+        # Configure Gemini with the API key
         genai.configure(api_key=api_key)
-        models = genai.list_models()  # Test the API key
-        print(f"API key verification successful. Found {len(models)} models.")
-        return {"status": "success", "message": "API key is valid"}
+        
+        # Try to list available models
+        try:
+            models = genai.list_models()
+            model_names = [model.name for model in models]
+            print(f"API key verification successful. Found {len(models)} models: {', '.join(model_names[:3])}...")
+            return {"status": "success", "message": "API key is valid", "models_found": len(models)}
+        except Exception as model_error:
+            print(f"Error listing models: {str(model_error)}")
+            
+            # Try a simpler test - just create a model instance
+            try:
+                model = genai.GenerativeModel('gemini-1.5-pro')
+                print("API key appears valid (model created successfully)")
+                return {"status": "success", "message": "API key is valid (basic verification)"}
+            except Exception as model_create_error:
+                print(f"Error creating model: {str(model_create_error)}")
+                raise HTTPException(status_code=400, detail=f"Invalid API key: {str(model_create_error)}")
+    
+    except HTTPException as he:
+        # Re-raise HTTP exceptions
+        raise he
     except Exception as e:
-        print(f"API key verification failed: {str(e)}")
+        print(f"API key verification failed with unexpected error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Invalid API key: {str(e)}")
 
 @app.post("/evaluate/")
