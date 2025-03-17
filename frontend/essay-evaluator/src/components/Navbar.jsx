@@ -48,7 +48,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
-              <img src={logoSvg} alt="LitMark Logo" className="h-55 w-auto my-2 ml-1" />
+              <img src={logoSvg} alt="LitMark Logo" className="h-15 w-auto" />
             </Link>
           </div>
           
