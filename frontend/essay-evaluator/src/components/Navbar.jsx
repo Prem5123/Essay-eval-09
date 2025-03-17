@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import logoSvg from '../assets/images/logo.svg';
+import logoSvg from '../assets/images/Litmark.png';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
