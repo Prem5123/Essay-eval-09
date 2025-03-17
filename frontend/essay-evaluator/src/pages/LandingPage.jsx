@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+import logoSvg from '../assets/images/logo.svg';
 
 const LandingPage = () => {
   const { currentUser, signInWithGoogle } = useAuth();
@@ -119,11 +120,14 @@ const LandingPage = () => {
             className="inline-block p-10 rounded-2xl mb-8"
             data-aos="zoom-in"
           >
-            <h1 className="text-5xl md:text-7xl font-bold leading-tight tracking-tight">
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
-                LitMark
-              </span>
-            </h1>
+            <div className="flex flex-col items-center justify-center">
+              <img src={logoSvg} alt="LitMark Logo" className="h-24 md:h-32 mb-4" />
+              <h1 className="text-5xl md:text-7xl font-bold leading-tight tracking-tight">
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+                  LitMark
+                </span>
+              </h1>
+            </div>
             <p className="text-xl md:text-3xl font-light mt-6 text-gray-300 h-10 flex items-center justify-center">
               {typedText}
               <span className={`inline-block w-0.5 h-8 ml-1 bg-blue-400 ${isTyping ? 'animate-blink' : ''}`}></span>

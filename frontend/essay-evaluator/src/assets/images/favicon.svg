@@ -1,0 +1,10 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Book/Document Shape -->
+  <path d="M2 0H30C31 0 32 1 32 2V30C32 31 31 32 30 32H2C1 32 0 31 0 30V2C0 1 1 0 2 0Z" fill="#0A0E17"/>
+  <path d="M4 2H28C29 2 30 3 30 4V28C30 29 29 30 28 30H4C3 30 2 29 2 28V4C2 3 3 2 4 2Z" fill="white"/>
+  
+  <!-- Orange Lines/Pages -->
+  <rect x="8" y="10" width="16" height="2" rx="1" fill="#FF9933"/>
+  <rect x="8" y="15" width="16" height="2" rx="1" fill="#FF9933"/>
+  <rect x="8" y="20" width="8" height="2" rx="1" fill="#FF9933"/>
+</svg> 
