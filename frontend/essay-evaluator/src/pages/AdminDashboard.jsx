@@ -210,11 +210,17 @@ const AdminDashboard = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        {/* Animated background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob"></div>
+          <div className="absolute top-40 -left-20 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        </div>
+        
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800 rounded-xl shadow-xl p-8 max-w-md w-full border border-gray-700"
+          className="bg-black/90 backdrop-blur-sm rounded-xl shadow-xl p-8 max-w-md w-full border border-[#0C2340]/50 relative z-10"
         >
           <h1 className="text-2xl font-bold text-center text-white mb-6">Admin Dashboard</h1>
           <p className="text-gray-400 mb-6 text-center">This area is restricted to administrators only.</p>
@@ -226,7 +232,7 @@ const AdminDashboard = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-2 rounded-lg bg-gray-900 border border-gray-700 text-white"
+                className="w-full p-2 rounded-lg bg-black border border-[#0C2340] text-white focus:outline-none focus:ring-2 focus:ring-[#0C2340] focus:border-transparent"
                 required
               />
             </div>
@@ -236,7 +242,7 @@ const AdminDashboard = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 rounded-lg bg-gray-900 border border-gray-700 text-white"
+                className="w-full p-2 rounded-lg bg-black border border-[#0C2340] text-white focus:outline-none focus:ring-2 focus:ring-[#0C2340] focus:border-transparent"
                 required
               />
             </div>
@@ -248,7 +254,7 @@ const AdminDashboard = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+              className="w-full py-2 bg-[#0C2340] hover:bg-[#0D2A4D] rounded-lg text-white font-medium transition-colors"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
@@ -275,8 +281,14 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-black p-6">
+      {/* Subtle animated background for the dashboard */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-10 animate-blob"></div>
+        <div className="absolute bottom-40 left-20 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
+      </div>
+      
+      <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white">LitMark Admin Dashboard</h1>
           <button
@@ -287,13 +299,13 @@ const AdminDashboard = () => {
           </button>
         </div>
         
-        <div className="bg-gray-800 rounded-xl shadow-xl p-6 border border-gray-700 mb-8">
+        <div className="bg-black/80 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-[#0C2340]/50 mb-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-white">System Diagnostics</h2>
             <button
               onClick={runDiagnostics}
               disabled={isRunningTests}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white flex items-center"
+              className="px-4 py-2 bg-[#0C2340] hover:bg-[#0D2A4D] rounded-lg text-white flex items-center"
             >
               {isRunningTests ? (
                 <>
@@ -335,7 +347,7 @@ const AdminDashboard = () => {
           )}
         </div>
         
-        <div className="bg-gray-800 rounded-xl shadow-xl p-6 border border-gray-700">
+        <div className="bg-black/80 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-[#0C2340]/50">
           <h2 className="text-xl font-bold text-white mb-4">System Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-gray-700/50 rounded-lg p-4">

@@ -6,6 +6,8 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker?url';
 import CryptoJS from 'crypto-js';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import './App.css';
+import Navbar from './components/Navbar';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -13,7 +15,6 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ManualLogin from './pages/ManualLogin';
 import AdminDashboard from './pages/AdminDashboard';
-import Navbar from './components/Navbar';
 
 // Original App component renamed to EssayEvaluator
 import EssayEvaluator from './components/EssayEvaluator';

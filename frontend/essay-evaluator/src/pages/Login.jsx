@@ -46,18 +46,18 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black flex items-center justify-center px-4">
+    <div className="min-h-screen bg-black flex items-center justify-center px-4">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-700 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute top-40 -left-20 w-80 h-80 bg-blue-700 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute top-40 -left-20 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
       </div>
       
-      <div className="max-w-md w-full bg-gray-800/50 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-gray-700 relative z-10">
+      <div className="max-w-md w-full bg-black/90 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-[#0C2340]/50 relative z-10">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block">
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-              Essay Evaluator
+            <h1 className="text-3xl font-bold text-white">
+              LitMark
             </h1>
           </Link>
           <p className="text-gray-400 mt-2">Sign in to your account</p>
@@ -79,7 +79,7 @@ const Login = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
+              className="w-full px-4 py-3 rounded-lg bg-black border border-[#0C2340] text-white focus:outline-none focus:ring-2 focus:ring-[#0C2340] focus:border-transparent transition-all duration-300"
               placeholder="you@example.com"
               required
             />
@@ -94,7 +94,7 @@ const Login = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
+              className="w-full px-4 py-3 rounded-lg bg-black border border-[#0C2340] text-white focus:outline-none focus:ring-2 focus:ring-[#0C2340] focus:border-transparent transition-all duration-300"
               placeholder="••••••••"
               required
             />
@@ -106,7 +106,7 @@ const Login = () => {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-700"
+                className="h-4 w-4 text-[#0C2340] focus:ring-[#0C2340] border-gray-600 rounded bg-black"
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-400">
                 Remember me
@@ -114,7 +114,7 @@ const Login = () => {
             </div>
             
             <div className="text-sm">
-              <a href="#" className="text-purple-400 hover:text-purple-300 transition-colors duration-300">
+              <a href="#" className="text-[#6E9CDE] hover:text-white transition-colors duration-300">
                 Forgot your password?
               </a>
             </div>
@@ -124,9 +124,9 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[#0C2340] hover:bg-[#0D2A4D] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0C2340] transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">{loading ? 'Signing in...' : 'Sign in'}</span>
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>
@@ -134,7 +134,7 @@ const Login = () => {
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-400">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-purple-400 hover:text-purple-300 font-medium transition-colors duration-300">
+            <Link to="/signup" className="text-[#6E9CDE] hover:text-white font-medium transition-colors duration-300">
               Sign up
             </Link>
           </p>
@@ -143,10 +143,10 @@ const Login = () => {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-600"></div>
+              <div className="w-full border-t border-[#0C2340]/50"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-800/50 text-gray-400">Or continue with</span>
+              <span className="px-2 bg-black text-gray-400">Or continue with</span>
             </div>
           </div>
           
@@ -155,7 +155,7 @@ const Login = () => {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full inline-flex justify-center py-3 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-sm font-bold text-gray-800 hover:bg-gray-100 transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full inline-flex justify-center items-center py-3 px-4 border border-[#0C2340] rounded-lg shadow-sm bg-black text-sm font-medium text-white hover:bg-[#0C2340]/10 transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px" className="mr-2">
                 <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>

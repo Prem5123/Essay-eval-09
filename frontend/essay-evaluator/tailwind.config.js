@@ -8,7 +8,7 @@ export default {
     theme: {
       extend: {
         fontFamily: {
-          sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+          sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
         },
         animation: {
           blob: "blob 7s infinite",
@@ -45,6 +45,8 @@ export default {
           },
         },
         colors: {
+          'navy-blue': '#1a365d',
+          'navy-blue-light': '#2a4a7f',
           primary: {
             50: '#EFF6FF', 
             100: '#DBEAFE', 
@@ -70,6 +72,19 @@ export default {
             800: '#115E59',
             900: '#134E4A',
             950: '#042F2E',
+          },
+          navy: {
+            50: '#E6EBF4',
+            100: '#CCDAE9',
+            200: '#99B4D3',
+            300: '#668FBD',
+            400: '#3369A6',
+            500: '#0C2340',  // Main navy color
+            600: '#091C33',
+            700: '#071526',
+            800: '#040E19',
+            900: '#02070C',
+            950: '#010306',
           },
         },
       },

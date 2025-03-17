@@ -9,8 +9,20 @@ import { useAuth } from '../contexts/AuthContext';
 import presetRubrics from '../utils/presetRubrics';
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
+// Define a CSS variable for navy-blue color if it's not already defined in your tailwind config
+// This ensures the color is available throughout this component
+const navyBlueStyle = {
+  "--navy-blue": "#1a365d", // Deep navy blue color
+  "--navy-blue-light": "#2a4a7f"
+};
+
 const AnimatedBackground = () => (
-  <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black" />
+  <div className="absolute inset-0 bg-black">
+    <div className="absolute inset-0 opacity-20">
+      <div className="absolute top-0 -left-4 w-96 h-96 bg-navy-blue/30 rounded-full filter blur-3xl"></div>
+      <div className="absolute bottom-0 right-10 w-96 h-96 bg-navy-blue/40 rounded-full filter blur-3xl"></div>
+    </div>
+  </div>
 );
 
 const FloatingCard = ({ children, delay = 0 }) => (
@@ -18,7 +30,7 @@ const FloatingCard = ({ children, delay = 0 }) => (
     initial={{ opacity: 0, y: 50 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5, delay }}
-    className="bg-gray-800/80 backdrop-blur-lg rounded-xl shadow-xl p-6 border border-gray-700/50"
+    className="bg-black/70 backdrop-blur-lg rounded-xl shadow-xl p-6 border border-navy-blue/50"
   >
     {children}
   </motion.div>
@@ -29,7 +41,7 @@ const AnimatedHeading = () => (
     initial={{ opacity: 0, y: -50 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.8 }}
-    className="text-5xl md:text-6xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500"
+    className="text-5xl md:text-6xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-navy-blue to-blue-400"
   >
     LitMark
   </motion.h1>
@@ -86,15 +98,15 @@ const FileUploadCard = ({ files, setFiles }) => {
         onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
         onDrop={handleDrop}
         className={`border-2 border-dashed rounded-xl p-8 transition-all duration-300
-          ${isDragging ? 'border-green-400 bg-green-400/10' : 'border-gray-600'}
-          ${files.length > 0 ? 'bg-green-500/10 border-green-500' : ''}
+          ${isDragging ? 'border-navy-blue bg-navy-blue/10' : 'border-gray-600'}
+          ${files.length > 0 ? 'bg-navy-blue/10 border-navy-blue' : ''}
           ${files.length >= MAX_FILES ? 'opacity-50 pointer-events-none' : ''}`}
       >
         <div className="flex flex-col items-center space-y-4">
           <motion.div whileHover={{ rotate: 180, scale: 1.1 }} transition={{ duration: 0.3 }}>
-            <Upload className="w-16 h-16 text-green-400" />
+            <Upload className="w-16 h-16 text-navy-blue" />
           </motion.div>
-          <p className="text-gray-300">
+          <p className="text-white">
             {files.length >= MAX_FILES
               ? `Maximum number of files (${MAX_FILES}) reached`
               : `Drag and drop your essay files here, or click to select (${files.length}/${MAX_FILES})`}
@@ -102,7 +114,7 @@ const FileUploadCard = ({ files, setFiles }) => {
           <motion.label
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`px-4 py-2 bg-green-500 rounded-full cursor-pointer ${files.length >= MAX_FILES ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`px-4 py-2 bg-navy-blue rounded-full cursor-pointer ${files.length >= MAX_FILES ? 'opacity-50 pointer-events-none' : ''}`}
           >
             <input
               type="file"
@@ -133,7 +145,7 @@ const FileUploadCard = ({ files, setFiles }) => {
                 className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg"
               >
                 <div className="flex items-center space-x-2">
-                  <FileText className="w-5 h-5 text-green-400" />
+                  <FileText className="w-5 h-5 text-navy-blue" />
                   <span className="text-gray-200 truncate max-w-xs">{file.name}</span>
                 </div>
                 <motion.button
@@ -161,19 +173,19 @@ const ResultItem = ({ result, onDownload }) => (
     className="flex items-center justify-between p-4 bg-gray-700/50 rounded-lg border border-gray-600"
   >
     <div className="flex items-center space-x-4">
-      <FileText className="w-6 h-6 text-green-400" />
+      <FileText className="w-6 h-6 text-navy-blue" />
       <div>
         <p className="text-gray-200 font-medium">{result.filename}</p>
-        <p className="text-green-400 font-bold">Score: {result.score}/{result.totalMark}</p>
+        <p className="text-navy-blue font-bold">Score: {result.score}/{result.totalMark}</p>
       </div>
     </div>
     <motion.button
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       onClick={onDownload}
-      className="p-2 bg-green-500/20 hover:bg-green-500/40 rounded-full"
+      className="p-2 bg-navy-blue/20 hover:bg-navy-blue/40 rounded-full"
     >
-      <Download className="w-5 h-5 text-green-400" />
+      <Download className="w-5 h-5 text-navy-blue" />
     </motion.button>
   </motion.div>
 );
@@ -541,18 +553,18 @@ const EssayEvaluator = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden pt-16">
+    <div className="min-h-screen relative overflow-hidden pt-16" style={navyBlueStyle}>
       <AnimatedBackground />
       <div className="relative z-10 p-8">
         <div className="mb-12">
           <AnimatedHeading />
-          <motion.p className="text-center text-gray-300 text-xl mt-4">
+          <motion.p className="text-center text-white text-xl mt-4">
             AI based essay evaluator
           </motion.p>
         </div>
         <div className="max-w-4xl mx-auto space-y-8">
           <FloatingCard>
-            <label className="block text-gray-300 mb-2">Gemini API Key</label>
+            <label className="block text-white mb-2">Gemini API Key</label>
             <div className="flex flex-col space-y-2">
               <div className="flex items-center space-x-4">
                 <div className="relative flex-grow">
@@ -561,7 +573,7 @@ const EssayEvaluator = () => {
                     value={apiKey}
                     onChange={handleApiKeyChange}
                     placeholder="Enter your Gemini API key"
-                    className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-green-400 text-white pr-10"
+                    className="w-full p-2 rounded-lg bg-black/80 border border-navy-blue focus:border-blue-400 text-white pr-10"
                   />
                   {apiKey && (
                     <button
@@ -584,7 +596,7 @@ const EssayEvaluator = () => {
                     onClick={handleVerifyApiKey}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2 bg-green-500 rounded-full flex items-center"
+                    className="px-4 py-2 bg-navy-blue rounded-full flex items-center"
                     title="Verify API key"
                   >
                     {isApiKeyVerified ? <Check className="w-4 h-4 mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
@@ -605,7 +617,7 @@ const EssayEvaluator = () => {
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-xs text-gray-400">
-                  Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">Google AI Studio</a>. 
+                  Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-navy-blue hover:underline">Google AI Studio</a>. 
                   Make sure to use a valid Gemini API key that starts with "AI".
                 </p>
                 {currentUser ? (
@@ -616,29 +628,29 @@ const EssayEvaluator = () => {
                   </p>
                 ) : (
                   <p className="text-xs text-gray-400">
-                    <a href="/login" className="text-green-400 hover:underline">Log in</a> to securely store your API key
+                    <a href="/login" className="text-navy-blue hover:underline">Log in</a> to securely store your API key
                   </p>
                 )}
               </div>
-              {isApiKeyVerified && <p className="text-green-400 mt-2">API Key Verified ✓</p>}
+              {isApiKeyVerified && <p className="text-navy-blue mt-2">API Key Verified ✓</p>}
             </div>
           </FloatingCard>
           <div className="flex justify-center space-x-4 mb-6">
             <motion.button
               onClick={() => setActiveTab('upload')}
-              className={`px-6 py-2 rounded-full transition-colors ${activeTab === 'upload' ? 'bg-green-500 text-white' : 'bg-gray-700/50 text-gray-300'}`}
+              className={`px-6 py-2 rounded-full transition-colors ${activeTab === 'upload' ? 'bg-navy-blue text-white' : 'bg-gray-700/50 text-gray-300'}`}
             >
               Upload Essays
             </motion.button>
             <motion.button
               onClick={() => setActiveTab('paste')}
-              className={`px-6 py-2 rounded-full transition-colors ${activeTab === 'paste' ? 'bg-green-500 text-white' : 'bg-gray-700/50 text-gray-300'}`}
+              className={`px-6 py-2 rounded-full transition-colors ${activeTab === 'paste' ? 'bg-navy-blue text-white' : 'bg-gray-700/50 text-gray-300'}`}
             >
               Paste Text
             </motion.button>
             <motion.button
               onClick={() => setActiveTab('rubric')}
-              className={`px-6 py-2 rounded-full transition-colors ${activeTab === 'rubric' ? 'bg-green-500 text-white' : 'bg-gray-700/50 text-gray-300'}`}
+              className={`px-6 py-2 rounded-full transition-colors ${activeTab === 'rubric' ? 'bg-navy-blue text-white' : 'bg-gray-700/50 text-gray-300'}`}
             >
               Rubric
             </motion.button>
@@ -655,7 +667,7 @@ const EssayEvaluator = () => {
                     value={essayText}
                     onChange={(e) => setEssayText(e.target.value)}
                     placeholder="Paste your essay here..."
-                    className="w-full h-64 p-4 rounded-xl bg-gray-900/50 border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all duration-300 resize-none text-white"
+                    className="w-full h-64 p-4 rounded-xl bg-gray-900/50 border border-gray-700 focus:border-navy-blue focus:ring-2 focus:ring-navy-blue/50 transition-all duration-300 resize-none text-white"
                     whileFocus={{ scale: 1.02 }}
                   />
                 </FloatingCard>
@@ -669,7 +681,7 @@ const EssayEvaluator = () => {
                       <select
                         value={selectedPresetRubric}
                         onChange={handlePresetRubricChange}
-                        className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-green-400 text-white"
+                        className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-navy-blue text-white"
                       >
                         <option value="">None (Custom Rubric)</option>
                         {presetRubrics.map(rubric => (
@@ -677,7 +689,7 @@ const EssayEvaluator = () => {
                         ))}
                       </select>
                       {selectedPresetRubric && (
-                        <p className="mt-2 text-sm text-green-400">
+                        <p className="mt-2 text-sm text-navy-blue">
                           Using preset: {presetRubrics.find(r => r.id === selectedPresetRubric)?.name}
                         </p>
                       )}
@@ -730,7 +742,7 @@ const EssayEvaluator = () => {
                             }
                           }
                         }}
-                        className="w-full h-64 p-4 rounded-xl bg-gray-900/50 border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all duration-300 resize-none text-white"
+                        className="w-full h-64 p-4 rounded-xl bg-gray-900/50 border border-gray-700 focus:border-navy-blue focus:ring-2 focus:ring-navy-blue/50 transition-all duration-300 resize-none text-white"
                         placeholder="Paste your rubric here, upload a file above, or select a preset..."
                       />
                     </div>
@@ -742,14 +754,14 @@ const EssayEvaluator = () => {
           <motion.div className="flex justify-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
             <motion.button
               onClick={handleSubmit}
-              disabled={isLoading || (activeTab === 'upload' && !files.length) || (activeTab === 'paste' && !essayText.trim())}
-              className={`px-8 py-4 rounded-full font-semibold focus:outline-none ${
+              disabled={
                 isLoading || (activeTab === 'upload' && !files.length) || (activeTab === 'paste' && !essayText.trim())
-                  ? 'bg-gray-600 text-gray-400'
-                  : 'bg-gradient-to-r from-green-400 to-emerald-500 text-white'
+              }
+              className={`w-full py-3 rounded-full font-medium text-center transition-all duration-300 ${
+                isLoading || (activeTab === 'upload' && !files.length) || (activeTab === 'paste' && !essayText.trim())
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-navy-blue hover:bg-blue-600 text-white cursor-pointer'
               }`}
-              whileHover={!isLoading && ((activeTab === 'upload' && files.length) || (activeTab === 'paste' && essayText.trim())) ? { scale: 1.05 } : {}}
-              whileTap={!isLoading && ((activeTab === 'upload' && files.length) || (activeTab === 'paste' && essayText.trim())) ? { scale: 0.95 } : {}}
             >
               <span className="flex items-center gap-2">
                 {isLoading ? (
@@ -763,11 +775,19 @@ const EssayEvaluator = () => {
               </span>
             </motion.button>
           </motion.div>
-          {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-red-400 mt-4">{error}</motion.p>}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-md mx-auto mt-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-white"
+            >
+              {error}
+            </motion.div>
+          )}
           {results.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="mt-12">
               <FloatingCard delay={0.2}>
-                <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500">
+                <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-navy-blue to-blue-400">
                   Evaluation Results
                 </h2>
                 <div className="space-y-4">

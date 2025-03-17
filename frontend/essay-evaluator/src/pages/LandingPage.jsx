@@ -57,29 +57,29 @@ const LandingPage = () => {
       title: "AI-Powered Evaluation",
       description: "Get detailed feedback on your essays using advanced AI technology.",
       icon: "🤖",
-      color: "bg-gradient-to-r from-indigo-400 to-blue-600",
-      hoverColor: "hover:from-indigo-500 hover:to-blue-700",
+      color: "bg-[#0C2340]",
+      hoverColor: "hover:bg-[#0D2A4D]",
     },
     {
       title: "Custom Rubrics",
       description: "Create and save your own evaluation rubrics or use our pre-defined templates.",
       icon: "📝",
-      color: "bg-gradient-to-r from-blue-400 to-teal-500",
-      hoverColor: "hover:from-blue-500 hover:to-teal-600",
+      color: "bg-[#0C2340]",
+      hoverColor: "hover:bg-[#0D2A4D]",
     },
     {
       title: "Detailed PDF Reports",
       description: "Receive comprehensive PDF reports with scores and improvement suggestions.",
       icon: "📊",
-      color: "bg-gradient-to-r from-teal-400 to-emerald-500",
-      hoverColor: "hover:from-teal-500 hover:to-emerald-600",
+      color: "bg-[#0C2340]",
+      hoverColor: "hover:bg-[#0D2A4D]",
     },
     {
       title: "Multiple File Formats",
       description: "Upload essays in PDF, TXT, or DOCX formats for evaluation.",
       icon: "📄",
-      color: "bg-gradient-to-r from-blue-500 to-indigo-500",
-      hoverColor: "hover:from-blue-600 hover:to-indigo-600",
+      color: "bg-[#0C2340]",
+      hoverColor: "hover:bg-[#0D2A4D]",
     },
   ];
 
@@ -105,12 +105,13 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0A0E17] text-white overflow-hidden font-sans">
-      {/* Animated background - subtle, elegant gradients */}
+    <div className="min-h-screen bg-black text-white overflow-hidden font-sans">
+      {/* Animated background - elegant, subtle, navy-based */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-5 animate-blob"></div>
-        <div className="absolute top-40 -left-20 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-5 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-40 left-20 w-80 h-80 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-5 animate-blob animation-delay-4000"></div>
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob"></div>
+        <div className="absolute top-1/3 -left-20 w-96 h-96 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-40 right-20 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-25 animate-blob animation-delay-4000"></div>
+        <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-25 animate-blob animation-delay-6000"></div>
       </div>
 
       {/* Hero Section - elegant and minimal */}
@@ -122,18 +123,18 @@ const LandingPage = () => {
           >
             <div className="flex flex-col items-center justify-center">
               <h1 className="text-5xl md:text-7xl font-bold leading-tight tracking-tight">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+                <span className="text-white">
                   LitMark
                 </span>
               </h1>
             </div>
-            <p className="text-xl md:text-3xl font-light mt-6 text-gray-300 h-10 flex items-center justify-center">
+            <p className="text-xl md:text-3xl font-light mt-6 text-white h-10 flex items-center justify-center">
               {typedText}
-              <span className={`inline-block w-0.5 h-8 ml-1 bg-blue-400 ${isTyping ? 'animate-blink' : ''}`}></span>
+              <span className={`inline-block w-0.5 h-8 ml-1 bg-white ${isTyping ? 'animate-blink' : ''}`}></span>
             </p>
           </div>
           <p 
-            className="text-lg md:text-xl max-w-2xl mx-auto mb-12 text-gray-400 leading-relaxed font-light"
+            className="text-lg md:text-xl max-w-2xl mx-auto mb-12 text-white leading-relaxed font-light"
             data-aos="fade-up"
             data-aos-delay="200"
           >
@@ -147,7 +148,7 @@ const LandingPage = () => {
             {currentUser ? (
               <Link 
                 to="/app" 
-                className="px-8 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-teal-500 text-white font-medium text-lg hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:-translate-y-1 hover:from-blue-600 hover:to-teal-600"
+                className="px-8 py-3 rounded-lg bg-[#0C2340] text-white font-medium text-lg hover:shadow-lg hover:shadow-[#0C2340]/40 transition-all duration-300 transform hover:-translate-y-1 hover:bg-[#0D2A4D]"
               >
                 Go to Dashboard
               </Link>
@@ -155,13 +156,13 @@ const LandingPage = () => {
               <>
                 <Link 
                   to="/login" 
-                  className="px-8 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-teal-500 text-white font-medium text-lg hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:-translate-y-1 hover:from-blue-600 hover:to-teal-600"
+                  className="px-8 py-3 rounded-lg bg-[#0C2340] text-white font-medium text-lg hover:shadow-lg hover:shadow-[#0C2340]/40 transition-all duration-300 transform hover:-translate-y-1 hover:bg-[#0D2A4D]"
                 >
                   Get Started
                 </Link>
                 <Link 
                   to="/signup" 
-                  className="px-8 py-3 rounded-lg bg-transparent border border-blue-500/50 text-white font-medium text-lg hover:bg-blue-500/10 transition-all duration-300 transform hover:-translate-y-1"
+                  className="px-8 py-3 rounded-lg bg-transparent border border-[#0C2340] text-white font-medium text-lg hover:bg-[#0C2340]/20 transition-all duration-300 transform hover:-translate-y-1"
                 >
                   Sign Up
                 </Link>
@@ -171,8 +172,8 @@ const LandingPage = () => {
         </div>
       </header>
 
-      {/* Features Section - clean and sophisticated */}
-      <section className="relative z-10 py-20 md:py-28 bg-[#0D121F]/90">
+      {/* Features Section - clean and sophisticated with black theme */}
+      <section className="relative z-10 py-20 md:py-28 bg-black/90">
         <div className="container mx-auto px-4">
           <h2 
             className="text-2xl md:text-3xl font-bold text-center mb-20 text-white"
@@ -184,46 +185,82 @@ const LandingPage = () => {
             {features.map((feature, index) => (
               <div 
                 key={index}
-                className="bg-[#131A29] rounded-xl p-8 border border-[#1E293B]/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-900/10 group hover:translate-y-[-8px]"
+                className="bg-black/80 rounded-xl p-8 border border-[#0C2340] transition-all duration-300 hover:shadow-xl hover:shadow-[#0C2340]/30 group hover:translate-y-[-8px]"
                 data-aos="fade-up"
                 data-aos-delay={100 * index}
               >
                 <div className={`${feature.color} ${feature.hoverColor} w-16 h-16 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg`}>
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-medium mb-4 text-white group-hover:text-blue-400 transition-colors duration-300">{feature.title}</h3>
-                <p className="text-gray-400 group-hover:text-gray-300 transition-colors duration-300 font-light">{feature.description}</p>
+                <h3 className="text-xl font-medium mb-4 text-white group-hover:text-[#6E9CDE] transition-colors duration-300">{feature.title}</h3>
+                <p className="text-gray-300 group-hover:text-white transition-colors duration-300 font-light">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section - refined and focused */}
+      {/* Testimonials Section - refined and focused */}
+      <section className="relative z-10 py-20 md:py-28 bg-black">
+        <div className="container mx-auto px-4">
+          <h2 
+            className="text-2xl md:text-3xl font-bold text-center mb-16 text-white"
+            data-aos="fade-up"
+          >
+            What People Are Saying
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <div 
+                key={index}
+                className="bg-black/90 rounded-xl p-8 border border-[#0C2340] hover:shadow-2xl transition-all duration-300 hover:translate-y-[-8px]"
+                data-aos="fade-up"
+                data-aos-delay={100 * index}
+              >
+                <div className="mb-6 relative">
+                  <svg className="absolute -top-4 -left-4 text-[#6E9CDE] w-8 h-8 opacity-80" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+                  </svg>
+                  <p className="text-white italic relative">{testimonial.content}</p>
+                </div>
+                <div className="flex items-center">
+                  <img src={testimonial.avatar} alt={testimonial.name} className="w-12 h-12 rounded-full mr-4" />
+                  <div>
+                    <h4 className="text-white font-medium">{testimonial.name}</h4>
+                    <p className="text-[#6E9CDE] text-sm">{testimonial.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section - elegant with black theme */}
       <section className="relative z-10 py-20 md:py-28">
         <div 
           className="container mx-auto px-4 text-center"
           data-aos="zoom-in"
         >
-          <div className="max-w-3xl mx-auto bg-[#131A29] p-12 rounded-2xl border border-[#1E293B]/50 shadow-2xl">
+          <div className="max-w-3xl mx-auto bg-gradient-to-b from-black/90 to-black p-12 rounded-2xl border border-[#0C2340] shadow-2xl">
             <h2 className="text-2xl md:text-3xl font-bold mb-6 text-white">
               Ready to Save Time on Essay Marking?
             </h2>
-            <p className="text-lg max-w-xl mx-auto mb-8 text-gray-400 font-light">
+            <p className="text-lg max-w-xl mx-auto mb-8 text-white font-light">
               Join thousands of educators who are already using LitMark's AI-powered essay evaluation tool.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               {currentUser ? (
                 <Link 
                   to="/app" 
-                  className="px-8 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-teal-500 text-white font-medium text-lg hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:-translate-y-1 hover:from-blue-600 hover:to-teal-600"
+                  className="px-8 py-3 rounded-lg bg-[#0C2340] text-white font-medium text-lg hover:shadow-lg hover:shadow-[#0C2340]/40 transition-all duration-300 transform hover:-translate-y-1 hover:bg-[#0D2A4D]"
                 >
                   Go to Dashboard
                 </Link>
               ) : (
                 <Link 
                   to="/login" 
-                  className="px-8 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-teal-500 text-white font-medium text-lg hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:-translate-y-1 hover:from-blue-600 hover:to-teal-600"
+                  className="px-8 py-3 rounded-lg bg-[#0C2340] text-white font-medium text-lg hover:shadow-lg hover:shadow-[#0C2340]/40 transition-all duration-300 transform hover:-translate-y-1 hover:bg-[#0D2A4D]"
                 >
                   Get Started
                 </Link>
@@ -234,14 +271,14 @@ const LandingPage = () => {
       </section>
 
       {/* Footer - elegant and minimal */}
-      <footer className="relative z-10 py-10 border-t border-[#1E293B]/50">
+      <footer className="relative z-10 py-10 border-t border-[#0C2340]">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+              <h3 className="text-xl font-bold text-white">
                 LitMark
               </h3>
-              <p className="text-gray-500 text-sm mt-1">© {new Date().getFullYear()} LitMark. All rights reserved.</p>
+              <p className="text-gray-400 text-sm mt-1">© {new Date().getFullYear()} LitMark. All rights reserved.</p>
             </div>
             <div className="flex space-x-8">
               <a href="#" className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">

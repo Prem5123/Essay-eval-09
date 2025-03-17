@@ -27,8 +27,14 @@ const ManualLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black flex items-center justify-center px-4 pt-16">
-      <div className="max-w-md w-full bg-gray-800/50 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-gray-700">
+    <div className="min-h-screen bg-black flex items-center justify-center px-4 pt-16">
+      {/* Animated background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute top-40 -left-20 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      </div>
+      
+      <div className="max-w-md w-full bg-black/90 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-[#0C2340]/50 relative z-10">
         <h1 className="text-2xl font-bold text-center mb-6 text-white">Create Manual User</h1>
         <p className="text-gray-400 mb-6 text-center">
           This page is for development purposes only. Create a user manually to bypass the authentication flow.
@@ -44,7 +50,7 @@ const ManualLogin = () => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-3 rounded-lg bg-black border border-[#0C2340] text-white focus:outline-none focus:ring-2 focus:ring-[#0C2340] focus:border-transparent"
               placeholder="Your Name"
             />
           </div>
@@ -58,7 +64,7 @@ const ManualLogin = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-3 rounded-lg bg-black border border-[#0C2340] text-white focus:outline-none focus:ring-2 focus:ring-[#0C2340] focus:border-transparent"
               placeholder="your@email.com"
             />
           </div>
@@ -72,7 +78,7 @@ const ManualLogin = () => {
               type="text"
               value={customId}
               onChange={(e) => setCustomId(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-3 rounded-lg bg-black border border-[#0C2340] text-white focus:outline-none focus:ring-2 focus:ring-[#0C2340] focus:border-transparent"
               placeholder="user123"
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -82,7 +88,7 @@ const ManualLogin = () => {
           
           <button
             type="submit"
-            className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-300"
+            className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[#0C2340] hover:bg-[#0D2A4D] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0C2340] transition-all duration-300"
           >
             Create User & Login
           </button>
