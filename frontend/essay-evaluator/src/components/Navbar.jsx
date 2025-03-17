@@ -48,10 +48,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
-              <img src={logoSvg} alt="LitMark Logo" className="h-8 w-auto mr-2" />
-              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
-                LitMark
-              </h1>
+              <img src={logoSvg} alt="LitMark Logo" className="h-8 w-auto" />
             </Link>
           </div>
           

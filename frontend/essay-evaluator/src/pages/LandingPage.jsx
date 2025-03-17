@@ -121,7 +121,6 @@ const LandingPage = () => {
             data-aos="zoom-in"
           >
             <div className="flex flex-col items-center justify-center">
-              <img src={logoSvg} alt="LitMark Logo" className="h-24 md:h-32 mb-4" />
               <h1 className="text-5xl md:text-7xl font-bold leading-tight tracking-tight">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
                   LitMark
