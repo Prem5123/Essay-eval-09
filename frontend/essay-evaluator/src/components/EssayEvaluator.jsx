@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, Loader2, X, Plus, Download, Check, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Loader2, X, Plus, Download, Check, RefreshCw, Package, AlertTriangle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker?url';
 import CryptoJS from 'crypto-js';
@@ -165,30 +165,96 @@ const FileUploadCard = ({ files, setFiles }) => {
   );
 };
 
-const ResultItem = ({ result, onDownload }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    className="flex items-center justify-between p-4 bg-gray-700/50 rounded-lg border border-gray-600"
-  >
-    <div className="flex items-center space-x-4">
-      <FileText className="w-6 h-6 text-navy-blue" />
-      <div>
-        <p className="text-gray-200 font-medium">{result.filename}</p>
-        <p className="text-navy-blue font-bold">Score: {result.score}/{result.totalMark}</p>
-      </div>
-    </div>
-    <motion.button
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      onClick={onDownload}
-      className="p-2 bg-navy-blue/20 hover:bg-navy-blue/40 rounded-full"
+const ResultItem = ({ result, onDownload, onRemove }) => {
+  // Extract student name for display
+  const studentName = result.student_name || "Unknown";
+  const hasStudentName = studentName !== "Unknown";
+  
+  // Check if this result has a rate limit error
+  const hasRateLimitError = result.hasError && result.errorType === 'rate_limit';
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className={`flex items-center justify-between p-4 rounded-lg border transition-colors 
+        ${hasRateLimitError 
+          ? 'bg-orange-700/30 border-orange-500 hover:border-orange-400' 
+          : 'bg-gray-700/50 border-gray-600 hover:border-navy-blue'}`}
     >
-      <Download className="w-5 h-5 text-navy-blue" />
-    </motion.button>
-  </motion.div>
-);
+      <div className="flex items-center space-x-4">
+        <div className={`flex items-center justify-center w-10 h-10 rounded-full 
+          ${hasRateLimitError ? 'bg-orange-500/30' : 'bg-navy-blue/30'}`}>
+          {hasRateLimitError 
+            ? <AlertTriangle className="w-6 h-6 text-orange-500" /> 
+            : <FileText className="w-6 h-6 text-navy-blue" />}
+        </div>
+        <div>
+          {hasStudentName ? (
+            <>
+              <p className="text-white font-semibold text-lg leading-tight">
+                {studentName}
+              </p>
+              <p className="text-gray-400 text-xs">
+                {result.filename}
+              </p>
+              <div className="flex items-center mt-1">
+                <p className={`font-bold ${hasRateLimitError ? 'text-orange-400' : 'text-navy-blue'}`}>
+                  Score: {result.score}/{result.totalMark || result.maxScore}
+                </p>
+                {hasRateLimitError && (
+                  <span className="ml-2 px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded-full">
+                    API Rate Limited
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-200 font-medium">
+                {result.filename}
+              </p>
+              <div className="flex items-center mt-1">
+                <p className={`font-bold ${hasRateLimitError ? 'text-orange-400' : 'text-navy-blue'}`}>
+                  Score: {result.score}/{result.totalMark || result.maxScore}
+                </p>
+                {hasRateLimitError && (
+                  <span className="ml-2 px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded-full">
+                    API Rate Limited
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="flex space-x-2">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={onDownload}
+          className={`p-2 rounded-full transition-colors ${
+            hasRateLimitError ? 'bg-orange-500/20 hover:bg-orange-500/40 text-orange-400' : 
+            'bg-navy-blue/20 hover:bg-navy-blue/40 text-navy-blue'
+          }`}
+          title="Download report"
+        >
+          <Download className="w-5 h-5" />
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={onRemove}
+          className="p-2 bg-red-500/20 hover:bg-red-500/40 rounded-full transition-colors"
+          title="Remove"
+        >
+          <X className="w-5 h-5 text-red-500" />
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+};
 
 const extractScoreFromPdf = async (blob) => {
   const url = URL.createObjectURL(blob);
@@ -236,6 +302,10 @@ const EssayEvaluator = () => {
   const [selectedPresetRubric, setSelectedPresetRubric] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const { currentUser } = useAuth();
+  const [sessionId, setSessionId] = useState(null);
+  const [evaluations, setEvaluations] = useState([]);
+  const [processingStatus, setProcessingStatus] = useState(null);
+  const [batchProgress, setBatchProgress] = useState(0);
 
   // Load API key from storage when component mounts or user changes
   useEffect(() => {
@@ -436,6 +506,9 @@ const EssayEvaluator = () => {
   const handleSubmit = async () => {
     try {
       setError(null);
+      setProcessingStatus(null);
+      setBatchProgress(0);
+      
       if (!apiKey.trim()) throw new Error('Please enter your Gemini API key.');
       if (!isApiKeyVerified) throw new Error('Please verify your API key first.');
       if (activeTab === 'upload' && files.length === 0) {
@@ -445,6 +518,11 @@ const EssayEvaluator = () => {
         throw new Error('Please enter your essay text.');
       }
       
+      // Clear previous results and evaluations
+      setResults([]);
+      setEvaluations([]);
+      setSessionId(null);
+      
       // Ensure we have the correct URL format
       let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       
@@ -453,27 +531,109 @@ const EssayEvaluator = () => {
         baseUrl = 'https://' + baseUrl;
       }
       
-      // Prepare common form data
-      const prepareFormData = () => {
-        const formData = new FormData();
-        formData.append('api_key', apiKey);
+      // Function to handle pasted text
+      const processPastedText = async () => {
+        setIsLoading(true);
+        setProcessingFile('Pasted essay');
         
-        // Handle rubric - either use text or rubric file
-        if (rubricText && rubricText.trim()) {
-          formData.append('rubric_text', rubricText.trim());
+        if (essayText.length > 30000) {
+          setProcessingStatus('Processing large document...');
         }
         
-        return formData;
+        // Count multiple essays based on different student identifier patterns
+        const studentNameMatches = (essayText.match(/Student Name:/gi) || []).length;
+        const studentMatches = (essayText.match(/Student:/gi) || []).length;
+        const nameMatches = (essayText.match(/Name:/gi) || []).length;
+        
+        // Subtract overlapping matches (e.g., "Student Name:" also matches "Student:")
+        const totalMatches = studentNameMatches + studentMatches + nameMatches;
+        
+        // Check for multiple essays based on newline patterns
+        const multipleSectionsIndicator = essayText.split(/\n{3,}/).length > 2;
+        
+        if (totalMatches > 1 || (multipleSectionsIndicator && totalMatches > 0)) {
+          const estimatedEssayCount = Math.max(1, totalMatches);
+          
+          // If we have many essays, warn the user about potential rate limits
+          if (estimatedEssayCount > 5) {
+            setProcessingStatus(`Processing ${estimatedEssayCount} essays...`);
+            
+            // Split the essays into batches to avoid rate limits
+            try {
+              const essays = splitEssaysText(essayText);
+              
+              if (essays.length > 5) {
+                // Process in batches of 3-4 essays at a time
+                const batchSize = 3;
+                const totalBatches = Math.ceil(essays.length / batchSize);
+                
+                for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+                  const batchStart = batchIndex * batchSize;
+                  const batchEnd = Math.min(batchStart + batchSize, essays.length);
+                  const currentBatch = essays.slice(batchStart, batchEnd);
+                  
+                  setBatchProgress(Math.round((batchIndex / totalBatches) * 100));
+                  setProcessingStatus(`Processing essays (${batchIndex + 1}/${totalBatches})...`);
+                  
+                  // Create a single text with just this batch of essays
+                  const batchText = currentBatch.join("\n\n---\n\n");
+                  
+                  // Process this batch
+                  await processEssayBatch(batchText, `Batch ${batchIndex + 1}`);
+                  
+                  // Add a delay between batches to avoid rate limits
+                  if (batchIndex < totalBatches - 1) {
+                    const delayTime = 5000 + (Math.random() * 3000); // 5-8 second delay between batches
+                    setProcessingStatus(`Preparing next batch...`);
+                    await new Promise(resolve => setTimeout(resolve, delayTime));
+                  }
+                }
+                
+                setBatchProgress(100);
+                setProcessingStatus(`Completing evaluation...`);
+                setIsLoading(false);
+                setProcessingFile(null);
+                setEssayText('');
+                return;
+              }
+            } catch (err) {
+              console.error("Error splitting essays:", err);
+              // Fall back to normal processing if splitting fails
+            }
+          }
+          
+          setProcessingStatus(`Processing ${estimatedEssayCount} essays...`);
+        } else {
+          setProcessingStatus('Processing essay...');
+        }
+        
+        // Process normally if we didn't take the batching path
+        await processEssayBatch(essayText, 'Pasted essay');
+        setEssayText('');
       };
       
-      if (activeTab === 'upload') {
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          setProcessingFile(file.name);
-          setIsLoading(true);
+      // Helper function to process a single batch of essays
+      const processEssayBatch = async (text, batchName) => {
+        try {
+          // Prepare form data
+          const formData = new FormData();
+          formData.append('api_key', apiKey);
           
-          const formData = prepareFormData();
-          formData.append('essay', file);
+          // Handle rubric - either use text or rubric file
+          if (rubricText && rubricText.trim()) {
+            formData.append('rubric_text', rubricText.trim());
+          }
+          
+          const essayBlob = new Blob([text], { type: 'text/plain' });
+          formData.append('essay', essayBlob, `${batchName}.txt`);
+          
+          // Ensure we have the correct URL format
+          let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          if (!baseUrl.startsWith('http')) {
+            baseUrl = 'https://' + baseUrl;
+          }
+          
+          console.log(`Sending batch: ${batchName} for processing`);
           
           const response = await fetch(`${baseUrl}/evaluate/`, {
             method: 'POST',
@@ -482,74 +642,626 @@ const EssayEvaluator = () => {
           
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.detail || `Failed to evaluate ${file.name}`);
+            throw new Error(errorData.detail || 'Failed to evaluate essay');
           }
           
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const scoreData = await extractScoreFromPdf(blob);
+          // Check if response is a PDF (direct result) or JSON (multiple essays)
+          const contentType = response.headers.get('content-type');
           
-          setResults((prev) => [
-            ...prev,
-            { 
-              id: Date.now() + i, 
-              filename: file.name, 
-              url, 
-              score: scoreData.score,
-              totalMark: scoreData.totalMark 
-            },
-          ]);
+          if (contentType && contentType.includes('application/pdf')) {
+            // Single essay response with PDF
+            console.log(`Received single essay response for batch: ${batchName}`);
+            await handleSingleEssayResponse(response, batchName);
+          } else {
+            // Multiple essays response
+            console.log(`Received multiple essays response for batch: ${batchName}`);
+            await handleMultipleEssaysResponse(response, batchName);
+          }
+          
+          // Log evaluation count after processing this batch
+          console.log(`Current evaluation count after processing ${batchName}: ${evaluations.length}`);
+        } catch (err) {
+          setError(`Error: ${err.message || 'An error occurred while evaluating the essays'}`);
         }
+      };
+      
+      // Helper function to split essay text into individual essays
+      const splitEssaysText = (text) => {
+        // Use multiple patterns to match student identifiers
+        const patterns = [
+          /Student Name:/i,
+          /Student:/i,
+          /Name:/i
+        ];
+        
+        // Try to split by student identifiers first
+        let essays = [];
+        let lines = text.split('\n');
+        let currentEssay = '';
+        let foundAnyMarker = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const isMarkerLine = patterns.some(pattern => pattern.test(line));
+          
+          if (isMarkerLine && currentEssay.trim().length > 0) {
+            // Save the previous essay
+            essays.push(currentEssay.trim());
+            currentEssay = line + '\n';
+            foundAnyMarker = true;
+          } else {
+            currentEssay += line + '\n';
+          }
+        }
+        
+        // Add the last essay
+        if (currentEssay.trim().length > 0) {
+          essays.push(currentEssay.trim());
+        }
+        
+        // If we didn't find any markers, try to split by multiple blank lines
+        if (!foundAnyMarker || essays.length <= 1) {
+          essays = text.split(/\n{3,}/).filter(essay => essay.trim().length > 100);
+        }
+        
+        // If we still have only one essay but it's very long, try to split by markdown-style separators
+        if (essays.length <= 1 && text.length > 10000) {
+          essays = text.split(/\n---+\n|\n\*\*\*+\n|\n___+\n/)
+            .filter(essay => essay.trim().length > 100);
+        }
+        
+        return essays;
+      };
+      
+      // Main execution - process based on active tab
+      if (activeTab === 'upload') {
+        await processUploadedFiles();
       } else {
-        setIsLoading(true);
-        setProcessingFile('Pasted essay');
-        
-        const formData = prepareFormData();
-        const essayBlob = new Blob([essayText], { type: 'text/plain' });
-        formData.append('essay', essayBlob, 'essay.txt');
-        
-        const response = await fetch(`${baseUrl}/evaluate/`, {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Failed to evaluate essay');
-        }
-        
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const scoreData = await extractScoreFromPdf(blob);
-        
-        setResults((prev) => [
-          ...prev,
-          { 
-            id: Date.now(), 
-            filename: 'Pasted essay', 
-            url, 
-            score: scoreData.score,
-            totalMark: scoreData.totalMark 
-          },
-        ]);
-        
-        setEssayText('');
+        await processPastedText();
       }
+      
     } catch (err) {
       setError(err.message || 'An error occurred while evaluating the essay.');
-    } finally {
       setIsLoading(false);
       setProcessingFile(null);
+      setProcessingStatus(null);
     }
   };
 
-  const handleDownload = (url, filename) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename.split('.')[0]}_evaluation.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async (url, filename, result) => {
+    // If URL is available, download directly
+    if (url) {
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Extract student name for filename
+      const studentName = result?.student_name || "Unknown";
+      const hasStudentName = studentName !== "Unknown";
+      const safeName = hasStudentName ? studentName.replace(/[^a-zA-Z0-9]/g, '_') : filename.split('.')[0];
+      
+      a.download = `${safeName}_report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+    
+    // Otherwise, we need to request it from the server
+    try {
+      setIsLoading(true);
+      
+      // Ensure we have the correct URL format
+      let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      // Make sure the URL has the https:// prefix
+      if (!baseUrl.startsWith('http')) {
+        baseUrl = 'https://' + baseUrl;
+      }
+      
+      if (!result || !result.sessionId) {
+        throw new Error('Missing session data for download');
+      }
+      
+      const response = await fetch(`${baseUrl}/download-report/${result.sessionId}/${result.filename}`, {
+        method: 'GET',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to download report');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message || 'An error occurred while downloading the report');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleRemoveResult = (id) => {
+    setResults(prev => prev.filter(result => result.id !== id));
+  };
+  
+  const handleDownloadAll = async () => {
+    // Check if we have evaluations to download
+    if (evaluations.length === 0) {
+      setError('No evaluations available for download');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // Ensure we have the correct URL format
+      let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      // Make sure the URL has the https:// prefix
+      if (!baseUrl.startsWith('http')) {
+        baseUrl = 'https://' + baseUrl;
+      }
+      
+      console.log(`Downloading ZIP with ${evaluations.length} evaluations`);
+      
+      // Deep copy and validate all evaluations to ensure they have proper structure
+      const processedEvaluations = evaluations.map((evaluation, index) => {
+        // Create a normalized base object
+        const normalizedEval = {
+          student_name: typeof evaluation.student_name === 'string' ? evaluation.student_name : `Essay ${index + 1}`,
+          overall_score: Number(evaluation.overall_score || 0),
+          criteria: [],
+          suggestions: [],
+          highlighted_passages: []
+        };
+        
+        // Ensure criteria is an array with at least one item
+        if (Array.isArray(evaluation.criteria) && evaluation.criteria.length > 0) {
+          // Normalize each criterion
+          normalizedEval.criteria = evaluation.criteria.map(crit => {
+            if (typeof crit !== 'object') return null;
+            return {
+              name: typeof crit.name === 'string' ? crit.name : 'Quality',
+              score: Number(crit.score || 0),
+              max_score: Number(crit.max_score || 10),
+              feedback: typeof crit.feedback === 'string' ? crit.feedback : 'No feedback provided'
+            };
+          }).filter(Boolean); // Remove any null entries
+        }
+        
+        // If no valid criteria, add a default one
+        if (normalizedEval.criteria.length === 0) {
+          normalizedEval.criteria = [{
+            name: "Overall Quality",
+            score: normalizedEval.overall_score,
+            max_score: 10,
+            feedback: "No specific feedback provided"
+          }];
+        }
+        
+        // Normalize suggestions
+        if (Array.isArray(evaluation.suggestions)) {
+          normalizedEval.suggestions = evaluation.suggestions
+            .filter(s => s)
+            .map(s => typeof s === 'string' ? s : String(s));
+        }
+        
+        // Normalize highlighted passages
+        if (Array.isArray(evaluation.highlighted_passages)) {
+          normalizedEval.highlighted_passages = evaluation.highlighted_passages
+            .filter(p => p && typeof p === 'object')
+            .map(p => ({
+              text: typeof p.text === 'string' ? p.text : '',
+              issue: typeof p.issue === 'string' ? p.issue : '',
+              suggestion: typeof p.suggestion === 'string' ? p.suggestion : '',
+              example_revision: typeof p.example_revision === 'string' ? p.example_revision : ''
+            }));
+        }
+        
+        return normalizedEval;
+      });
+      
+      // Log the processed data
+      console.log(`Prepared ${processedEvaluations.length} normalized evaluations`);
+      
+      // Debug: Log a sample evaluation
+      if (processedEvaluations.length > 0) {
+        console.log('Sample evaluation:', processedEvaluations[0]);
+      }
+      
+      // Create payload with validated data
+      const payload = {
+        session_id: sessionId,
+        evaluations: processedEvaluations
+      };
+      
+      // Send request to server
+      const response = await fetch(`${baseUrl}/generate-all-zip/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        console.error('Error response:', response.status, response.statusText);
+        let errorMessage = `Server error: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          // If we can't parse JSON, use the status text
+        }
+        throw new Error(errorMessage);
+      }
+      
+      console.log(`ZIP file generated successfully, downloading...`);
+      
+      const blob = await response.blob();
+      console.log(`ZIP blob size: ${blob.size} bytes`);
+      
+      if (blob.size < 100) {
+        throw new Error('The generated ZIP file is empty or too small. Please try again.');
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'evaluation_reports.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      window.URL.revokeObjectURL(url);
+      
+      console.log(`Downloaded ZIP file with ${evaluations.length} evaluations`);
+    } catch (err) {
+      console.error("Error downloading all reports:", err);
+      setError(err.message || 'An error occurred while generating the zip file');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to handle uploaded files
+  const processUploadedFiles = async () => {
+    // Calculate total expected files including possible multiple essays in each file
+    let totalExpectedFiles = files.length;
+    
+    // Determine if we should batch process or do individual files
+    let shouldBatchProcess = files.length > 5;
+    
+    if (shouldBatchProcess) {
+      setProcessingStatus(`Processing ${files.length} files...`);
+      
+      // Process files in smaller batches
+      const batchSize = 3;
+      const totalBatches = Math.ceil(files.length / batchSize);
+      
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        const batchStart = batchIndex * batchSize;
+        const batchEnd = Math.min(batchStart + batchSize, files.length);
+        const currentBatchFiles = files.slice(batchStart, batchEnd);
+        
+        setBatchProgress(Math.round((batchIndex / totalBatches) * 100));
+        setProcessingStatus(`Processing files (${batchIndex + 1}/${totalBatches})...`);
+        
+        // Process each file in this batch
+        for (let i = 0; i < currentBatchFiles.length; i++) {
+          const file = currentBatchFiles[i];
+          setProcessingFile(file.name);
+          setIsLoading(true);
+          
+          try {
+            // Process the file
+            await processFile(file);
+          } catch (err) {
+            setError(`Error processing ${file.name}: ${err.message}`);
+            // Continue with next file instead of stopping completely
+          }
+        }
+        
+        // Add a delay between batches to avoid rate limits
+        if (batchIndex < totalBatches - 1) {
+          const delayTime = 5000 + (Math.random() * 3000); // 5-8 second delay between batches
+          setProcessingStatus(`Preparing next batch...`);
+          await new Promise(resolve => setTimeout(resolve, delayTime));
+        }
+      }
+      
+      setBatchProgress(100);
+      setProcessingStatus(`Completing evaluation...`);
+      setIsLoading(false);
+      setProcessingFile(null);
+      setProcessingStatus(null);
+    } else {
+      // Process files individually (traditional approach)
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setProcessingFile(file.name);
+        setIsLoading(true);
+        setBatchProgress(Math.round((i / files.length) * 100));
+        
+        if (files.length > 1) {
+          setProcessingStatus(`Processing file ${i+1} of ${files.length}...`);
+        } else {
+          setProcessingStatus('Processing file...');
+        }
+        
+        try {
+          // Process the file
+          await processFile(file);
+        } catch (err) {
+          setError(`Error processing ${file.name}: ${err.message}`);
+          // Continue with next file instead of stopping completely
+          continue;
+        }
+      }
+      
+      setIsLoading(false);
+      setProcessingFile(null);
+      setProcessingStatus(null);
+      setBatchProgress(100);
+    }
+  };
+
+  // Helper function to process a single file
+  const processFile = async (file) => {
+    // Ensure we have the correct URL format
+    let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://' + baseUrl;
+    }
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('api_key', apiKey);
+    
+    // Handle rubric - either use text or rubric file
+    if (rubricText && rubricText.trim()) {
+      formData.append('rubric_text', rubricText.trim());
+    }
+    
+    formData.append('essay', file);
+    
+    const response = await fetch(`${baseUrl}/evaluate/`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `Failed to evaluate ${file.name}`);
+    }
+    
+    // Check if response is a PDF (direct result) or JSON (multiple essays)
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/pdf')) {
+      // Single essay response with PDF
+      await handleSingleEssayResponse(response, file.name);
+    } else {
+      // Multiple essays response
+      await handleMultipleEssaysResponse(response, file.name);
+    }
+  };
+
+  // Helper function for single essay response
+  const handleSingleEssayResponse = async (response, filename) => {
+    try {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Get score and total mark from headers
+      const scoreHeader = response.headers.get('X-Essay-Score');
+      const totalMarkHeader = response.headers.get('X-Essay-Total-Mark') || '10';
+      const sessionId = response.headers.get('X-Session-ID');
+      let studentName = response.headers.get('X-Student-Name') || 'Unknown';
+      
+      if (sessionId) {
+        setSessionId(sessionId);
+      }
+      
+      // Parse score information
+      const scoreData = {
+        score: scoreHeader ? parseFloat(scoreHeader) : 0,
+        totalMark: totalMarkHeader ? parseFloat(totalMarkHeader) : 10
+      };
+      
+      // Extract student name from PDF (if possible)
+      let pdfUrl = null;
+      try {
+        pdfUrl = URL.createObjectURL(blob);
+        const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+        const page = await pdf.getPage(1);
+        const textContent = await page.getTextContent();
+        const text = textContent.items.map(item => item.str).join(' ');
+        
+        // Try to extract student name with different patterns
+        for (const pattern of [/Student Name:\s+([A-Za-z]+(?: [A-Za-z]+){0,2})/, /Student:\s+([A-Za-z]+(?: [A-Za-z]+){0,2})/, /Name:\s+([A-Za-z]+(?: [A-Za-z]+){0,2})/]) {
+          const match = text.match(pattern);
+          if (match && match[1]) {
+            studentName = match[1].trim();
+            break;
+          }
+        }
+        
+        // If no match found, look for a name in a report title line
+        if (studentName === "Unknown") {
+          const titleMatch = text.match(/Report[\s\n]+([A-Za-z]+(?: [A-Za-z]+){0,2})[\s\n]/);
+          if (titleMatch && titleMatch[1]) {
+            studentName = titleMatch[1].trim();
+          }
+        }
+        
+        URL.revokeObjectURL(pdfUrl);
+      } catch (err) {
+        console.error("Error extracting student name from PDF:", err);
+      }
+      
+      // Create a normalized evaluation object and add to evaluations array
+      const singleEvaluation = {
+        student_name: studentName,
+        overall_score: scoreData.score,
+        max_score: scoreData.totalMark,
+        criteria: [{ name: "Overall", score: scoreData.score, max_score: scoreData.totalMark }],
+        suggestions: [],
+        highlighted_passages: []
+      };
+      
+      console.log(`Adding single evaluation for ${studentName} to evaluations array`);
+      setEvaluations(prevEvaluations => [...prevEvaluations, singleEvaluation]);
+      
+      setResults((prev) => [
+        ...prev,
+        { 
+          id: Date.now() + Math.random(), 
+          filename: filename, 
+          url, 
+          score: scoreData.score,
+          totalMark: scoreData.totalMark,
+          student_name: studentName
+        },
+      ]);
+    } catch (err) {
+      throw new Error(`Error processing response: ${err.message}`);
+    }
+  };
+
+  // Helper function for multiple essays response
+  const handleMultipleEssaysResponse = async (response, filename = 'Batch') => {
+    try {
+      const jsonData = await response.json();
+      
+      console.log("Multiple essays response:", jsonData);
+      
+      if (jsonData.multiple_essays) {
+        // Store session ID for batch operations
+        setSessionId(jsonData.session_id);
+        
+        const essayCount = jsonData.count || (jsonData.results ? jsonData.results.length : 0);
+        const expectedCount = essayCount;
+        
+        // Check if we got fewer results than expected (possible rate limit)
+        if (jsonData.results && jsonData.results.length < expectedCount) {
+          setProcessingStatus(`Processed ${jsonData.results.length} of ${expectedCount} essays`);
+        } else {
+          setProcessingStatus(`Finalizing ${essayCount} evaluations...`);
+        }
+        
+        // Store evaluations for potential zip download - ACCUMULATE instead of replacing
+        if (jsonData.results && jsonData.results.length > 0) {
+          // Normalize evaluation data for consistency
+          const normalizedResults = jsonData.results.map(result => {
+            // Ensure that each result has all required fields for PDF generation
+            return {
+              student_name: result.student_name || "Unknown",
+              overall_score: result.overall_score || 0,
+              max_score: result.max_score || 10,
+              criteria: result.criteria || [],
+              suggestions: result.suggestions || [],
+              highlighted_passages: result.highlighted_passages || []
+            };
+          });
+          
+          console.log(`Adding ${normalizedResults.length} normalized evaluations to state`);
+          setEvaluations(prevEvaluations => [...prevEvaluations, ...normalizedResults]);
+        }
+        
+        if (!jsonData.results || jsonData.results.length === 0) {
+          throw new Error('No essay results returned from server');
+        }
+        
+        // Add each result to the results list
+        const newResults = jsonData.results.map((result, index) => {
+          // Check if this result contains a rate limit error
+          const hasRateLimitError = 
+            result.suggestions?.some(s => s.includes("rate limit")) || 
+            result.criteria?.some(c => c.feedback?.includes("rate limit"));
+          
+          return {
+            id: (result.id || index) + Date.now(),
+            filename: result.filename || `${filename}_part${(result.id || index) + 1}`,
+            student_name: result.student_name || `Essay ${index + 1}`,
+            score: result.overall_score || 0,
+            maxScore: result.max_score || 10,
+            sessionId: jsonData.session_id,
+            needsDownload: true,
+            evaluationData: result, // Store the evaluation data for display
+            hasError: hasRateLimitError,
+            errorType: hasRateLimitError ? 'rate_limit' : null
+          };
+        });
+        
+        setResults(prev => [...prev, ...newResults]);
+        
+        // Check if any results had rate limit errors
+        const rateLimitedCount = newResults.filter(r => r.hasError && r.errorType === 'rate_limit').length;
+        if (rateLimitedCount > 0) {
+          setError(`${rateLimitedCount} essays encountered API rate limits. Try processing fewer essays at once or wait a few minutes before processing more essays.`);
+        }
+        
+        console.log(`Processed ${newResults.length} essays`);
+      } else {
+        // Check if this is just a single essay response in JSON format
+        if (jsonData.student_name && jsonData.overall_score !== undefined) {
+          console.log("Single essay JSON response detected");
+          
+          // Check if this result contains a rate limit error
+          const hasRateLimitError = 
+            jsonData.suggestions?.some(s => s.includes("rate limit")) || 
+            jsonData.criteria?.some(c => c.feedback?.includes("rate limit"));
+          
+          // Create a mock result for this single essay
+          const singleResult = {
+            id: Date.now(),
+            filename: filename,
+            student_name: jsonData.student_name,
+            score: jsonData.overall_score,
+            maxScore: jsonData.criteria ? 
+              jsonData.criteria.reduce((sum, c) => sum + (c.max_score || 10), 0) : 10,
+            sessionId: null,
+            needsDownload: true,
+            evaluationData: jsonData, // Store the evaluation data for display
+            hasError: hasRateLimitError,
+            errorType: hasRateLimitError ? 'rate_limit' : null
+          };
+          
+          setResults(prev => [...prev, singleResult]);
+          
+          // Also add to evaluations array for consistency
+          setEvaluations(prevEvaluations => [...prevEvaluations, jsonData]);
+          
+          if (hasRateLimitError) {
+            setError(`Essay evaluation was affected by API rate limits. Try again in a few minutes.`);
+          }
+        } else {
+          // Handle unexpected response format
+          throw new Error('Unexpected response format from server');
+        }
+      }
+    } catch (err) {
+      console.error("Error processing multiple essays:", err);
+      
+      // Check if this is a rate limit error
+      if (err.message.includes('429') || err.message.toLowerCase().includes('rate limit') || 
+          err.message.toLowerCase().includes('quota') || err.message.toLowerCase().includes('resource exhausted')) {
+        setError(`Google Gemini API rate limit exceeded. Please try again with fewer essays or wait a few minutes before processing more.`);
+      } else {
+        throw new Error(`Error processing multiple essays: ${err.message}`);
+      }
+    }
   };
 
   return (
@@ -757,17 +1469,47 @@ const EssayEvaluator = () => {
               disabled={
                 isLoading || (activeTab === 'upload' && !files.length) || (activeTab === 'paste' && !essayText.trim())
               }
-              className={`w-full py-3 rounded-full font-medium text-center transition-all duration-300 ${
+              className={`w-full py-3 rounded-full font-medium text-center transition-all duration-300 relative overflow-hidden ${
                 isLoading || (activeTab === 'upload' && !files.length) || (activeTab === 'paste' && !essayText.trim())
                   ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                   : 'bg-navy-blue hover:bg-blue-600 text-white cursor-pointer'
               }`}
             >
-              <span className="flex items-center gap-2">
+              {isLoading && (
+                <>
+                  <motion.div 
+                    initial={{ width: "5%" }}
+                    animate={{ 
+                      width: `${batchProgress || 5}%`,
+                      transition: { duration: 0.6, ease: "easeInOut" }
+                    }}
+                    className="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-blue-500 to-navy-blue rounded-r-full z-10"
+                  />
+                  <motion.div 
+                    animate={{ 
+                      opacity: [0.6, 0.8, 0.6],
+                    }}
+                    transition={{ 
+                      repeat: Infinity, 
+                      duration: 1.5,
+                      ease: "easeInOut" 
+                    }}
+                    className="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-blue-400/40 to-blue-600/40 rounded-full"
+                    style={{ width: `${Math.min(100, batchProgress + 5 || 10)}%` }}
+                  />
+                  <motion.div
+                    className="absolute bottom-0 left-0 h-1.5 w-full bg-gray-800/50"
+                  />
+                </>
+              )}
+              <span className="flex items-center justify-center gap-2">
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Processing {processingFile ? `"${processingFile}"` : '...'}</span>
+                    <span>
+                      {processingStatus || `Processing ${processingFile ? `"${processingFile}"` : '...'}`}
+                      {batchProgress > 0 && ` (${batchProgress}%)`}
+                    </span>
                   </>
                 ) : (
                   'Evaluate Essays'
@@ -784,26 +1526,61 @@ const EssayEvaluator = () => {
               {error}
             </motion.div>
           )}
-          {results.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="mt-12">
-              <FloatingCard delay={0.2}>
-                <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-navy-blue to-blue-400">
-                  Evaluation Results
-                </h2>
-                <div className="space-y-4">
-                  <AnimatePresence>
-                    {results.map((result) => (
-                      <ResultItem
-                        key={result.id}
-                        result={result}
-                        onDownload={() => handleDownload(result.url, result.filename)}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </FloatingCard>
-            </motion.div>
-          )}
+          {/* Results section with count indicator */}
+          <AnimatePresence>
+            {results.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="mt-10"
+              >
+                <FloatingCard>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-center text-navy-blue">
+                      Evaluation Results
+                    </h2>
+                    {results.length > 1 && (
+                      <span className="bg-navy-blue/20 text-navy-blue px-3 py-1 rounded-full text-sm font-medium">
+                        {results.length} Essays
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                    <AnimatePresence>
+                      {results.map((result) => (
+                        <ResultItem
+                          key={result.id}
+                          result={result}
+                          onDownload={() => handleDownload(result.url, result.filename, result)}
+                          onRemove={() => handleRemoveResult(result.id)}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                  {results.length > 1 && (
+                    <div className="mt-4 flex justify-center">
+                      <motion.button
+                        onClick={handleDownloadAll}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center px-4 py-2 bg-navy-blue text-white rounded-full shadow-lg"
+                        title="Download all evaluations as a zip file"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Package className="w-4 h-4 mr-2" />
+                        )}
+                        Download All Reports
+                      </motion.button>
+                    </div>
+                  )}
+                </FloatingCard>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

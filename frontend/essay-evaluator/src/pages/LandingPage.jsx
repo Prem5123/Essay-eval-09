@@ -105,9 +105,19 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden font-sans">
+    <div className="min-h-screen bg-black text-white overflow-hidden font-sans matte-canvas">
+      {/* Canvas grain effect */}
+      <div className="canvas-grain"></div>
+      
+      {/* Matte canvas effect overlay */}
+      <div className="absolute inset-0 z-0 bg-black opacity-90 pointer-events-none">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjMDAwIj48L3JlY3Q+CjxwYXRoIGQ9Ik0wIDVMNSAwWk02IDRMNCA2Wk0tMSAxTDEgLTFaIiBzdHJva2U9IiMyMjIiIHN0cm9rZS13aWR0aD0iMC41Ij48L3BhdGg+Cjwvc3ZnPg==')] opacity-10"></div>
+        <div className="absolute inset-0" style={{ backdropFilter: 'brightness(0.95) contrast(1.05)' }}></div>
+        <div className="matte-overlay"></div>
+      </div>
+
       {/* Animated background - elegant, subtle, navy-based */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob"></div>
         <div className="absolute top-1/3 -left-20 w-96 h-96 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
         <div className="absolute bottom-40 right-20 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-25 animate-blob animation-delay-4000"></div>
