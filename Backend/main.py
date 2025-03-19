@@ -192,7 +192,7 @@ async def evaluate_essays(essay_text: str, rubric_text: str | None, api_key: str
     
     has_multiple_students = (student_name_count + student_count + name_count) > 1
     
-    print(f"Document stats: {len(essay_text.split())} words, {len(essay_text.split('\\n'))} lines")
+    print(f"Document stats: {len(essay_text.split())} words, {len(essay_text.split('\n'))} lines")
     print(f"Student indicators: Student Name:{student_name_count}, Student:{student_count}, Name:{name_count}")
     
     results = []
