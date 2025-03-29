@@ -1144,8 +1144,8 @@ async def verify_api_key(api_key: str = Form(...)):
 
 @app.post("/evaluate/")
 async def evaluate_essay_endpoint(
-    essay: UploadFile, 
-    api_key: str = Form(...), 
+    essay: UploadFile,
+    api_key: str = Form(...),
     rubric_text: Optional[str] = Form(None),
     rubric_id: Optional[str] = Form(None)
 ):
@@ -1166,65 +1166,116 @@ async def evaluate_essay_endpoint(
     try:
         essay_text = await extract_text(essay)
         evaluations = await evaluate_essays(essay_text, rubric_text, api_key)
-        
+
         # Create a unique session ID for this batch
         session_id = str(uuid.uuid4())
-        
+
         # If there's only one essay, return it directly
         if len(evaluations) == 1:
             evaluation = evaluations[0]
+
+            # --- FIX START: Calculate max_score for the single essay ---
+            criteria = evaluation.get("criteria", [])
+            max_score = 0 # Initialize max_score
+            if not criteria:
+                # Handle edge case: if evaluation failed or returned no criteria
+                # We might estimate based on the default rubric or return a default
+                print(f"Warning: No criteria found in evaluation for {evaluation.get('student_name', 'Unknown')}. Estimating max_score.")
+                # Example: Assume default rubric structure (5 criteria * 10 points)
+                # You might want a more robust fallback based on the input rubric if possible
+                try:
+                    # Attempt to parse the input rubric again (if available)
+                    if rubric_text:
+                         criteria_pattern = r'(\d+)\.\s+([\w\s&,\-]+)\s+\(0-(\d+)\):'
+                         criteria_matches = re.findall(criteria_pattern, rubric_text)
+                         if criteria_matches:
+                              max_score = sum(int(match[2]) for match in criteria_matches)
+                         else:
+                              max_score = 50 # Fallback to default assumption
+                    else: # Default if no rubric provided
+                        max_score = 50
+                except Exception:
+                    max_score = 50 # Final fallback
+            else:
+                try:
+                    # Sum max_score from each criterion dict
+                    max_score = sum(
+                        int(c.get("max_score", 10)) # Default to 10 if missing, ensure int
+                        for c in criteria if isinstance(c, dict) # Ensure it's a dict
+                    )
+                except (ValueError, TypeError) as e:
+                    print(f"Warning: Error calculating max_score from criteria: {e}. Estimating.")
+                    # Fallback estimation if scores aren't numeric
+                    max_score = len(criteria) * 10
+
+            # --- FIX END ---
+
             pdf_buffer = pdf_report.create(evaluation)
             student_name = evaluation.get("student_name", "Unknown")
             safe_name = re.sub(r'[^a-zA-Z0-9]', '_', student_name)
             filename = f"{safe_name}_report.pdf" if safe_name != "Unknown" else "evaluation_report.pdf"
-            
+
+            # Use the calculated max_score here
             return Response(
                 content=pdf_buffer.getvalue(),
                 media_type="application/pdf",
                 headers={
                     "Content-Disposition": f"attachment; filename={filename}",
-                    "X-Essay-Score": str(evaluation['overall_score']),
+                    # Use .get() for overall_score too for safety
+                    "X-Essay-Score": str(evaluation.get('overall_score', 0)),
                     "X-Total-Essays": "1",
-                    "X-Session-ID": session_id
+                    "X-Session-ID": session_id,
+                    "X-Essay-Total-Mark": str(max_score) # Now uses the correctly calculated max_score
                 }
             )
-        
+
         # For multiple essays, create a response with information about each essay
         results = []
         pdf_buffers = {}
-        
+
         # Generate PDF reports for each essay
         for i, evaluation in enumerate(evaluations):
             student_name = evaluation.get("student_name", f"Essay_{i+1}")
             safe_name = re.sub(r'[^a-zA-Z0-9]', '_', student_name)
-            
+
             # Create PDF report
             pdf_buffer = pdf_report.create(evaluation)
             pdf_data = pdf_buffer.getvalue()
-            
+
             # Store PDF data with a filename
             filename = f"{safe_name}_report.pdf"
             pdf_buffers[filename] = pdf_data
-            
-            # Calculate max score
-            max_score = sum(criterion.get("max_score", 10) for criterion in evaluation.get("criteria", []))
-            
+
+            # --- Calculate max score (this part was already correct) ---
+            criteria = evaluation.get("criteria", [])
+            max_score = 0
+            if criteria:
+                 try:
+                    max_score = sum(
+                        int(c.get("max_score", 10))
+                        for c in criteria if isinstance(c, dict)
+                    )
+                 except (ValueError, TypeError):
+                     max_score = len(criteria) * 10 # Fallback
+            else:
+                # Add similar fallback logic as single essay case if needed
+                max_score = 50 # Simple fallback for consistency
+            # --- End Calculation ---
+
             # Add result info
             results.append({
                 "id": i,
                 "student_name": student_name,
                 "filename": filename,
                 "overall_score": evaluation.get("overall_score", 0),
-                "max_score": max_score
+                "max_score": max_score # Include max_score in the result JSON too
             })
-        
-        # Save the pdf_buffers in memory (you would use a persistent storage in production)
-        # Here we're using global variables for demonstration
+
+        # Save the pdf_buffers in memory
         if not hasattr(app, "_evaluation_storage"):
             app._evaluation_storage = {}
-        
         app._evaluation_storage[session_id] = pdf_buffers
-        
+
         # Return a JSON response with information about all essays
         return {
             "multiple_essays": True,
@@ -1232,10 +1283,12 @@ async def evaluate_essay_endpoint(
             "session_id": session_id,
             "results": results
         }
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        import traceback
+        traceback.print_exc() # Print full traceback for debugging server errors
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @app.get("/download-report/{session_id}/{filename}")
@@ -1555,5 +1608,4 @@ async def upload_rubric_file(file: UploadFile):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
