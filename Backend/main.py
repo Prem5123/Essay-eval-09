@@ -10,6 +10,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.pdfgen.canvas import Canvas 
+
 import json
 import re
 import pdfplumber
@@ -853,9 +855,9 @@ class PDFReport:
                  return BytesIO()
 
 # Custom Canvas class to draw footer using PDFReport's style
-class CanvasWithFooter(reportlab.pdfgen.canvas.Canvas):
+class CanvasWithFooter(Canvas): #reportlab.pdfgen.canvas.Canvas
     def __init__(self, *args, **kwargs):
-        reportlab.pdfgen.canvas.Canvas.__init__(self, *args, **kwargs)
+        Canvas.__init__(self, *args, **kwargs)
         self._saved_page_states = []
         self._report_instance = PDFReport() # Get styles
 
@@ -869,8 +871,8 @@ class CanvasWithFooter(reportlab.pdfgen.canvas.Canvas):
         for state in self._saved_page_states:
             self.__dict__.update(state)
             self.draw_page_number(num_pages)
-            reportlab.pdfgen.canvas.Canvas.showPage(self)
-        reportlab.pdfgen.canvas.Canvas.save(self)
+            Canvas.showPage(self)
+            Canvas.save(self)
 
     def draw_page_number(self, page_count):
         self.setFont(self._report_instance.FONT_NAME, 8)
