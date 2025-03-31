@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, Loader2, X, Plus, Download, Check, RefreshCw, Package, AlertTriangle } from 'lucide-react';
+import { Upload, FileText, Loader2, X, Plus, Download, Check, RefreshCw, Package, AlertTriangle, Lock, Unlock } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker?url';
 import CryptoJS from 'crypto-js';
@@ -9,10 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import presetRubrics from '../utils/presetRubrics';
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
-// Define a CSS variable for navy-blue color if it's not already defined in your tailwind config
-// This ensures the color is available throughout this component
 const navyBlueStyle = {
-  "--navy-blue": "#1a365d", // Deep navy blue color
+  "--navy-blue": "#1a365d",
   "--navy-blue-light": "#2a4a7f"
 };
 
@@ -166,13 +164,10 @@ const FileUploadCard = ({ files, setFiles }) => {
 };
 
 const ResultItem = ({ result, onDownload, onRemove }) => {
-  // Extract student name for display
   const studentName = result.student_name || "Unknown";
   const hasStudentName = studentName !== "Unknown";
-  
-  // Check if this result has a rate limit error
   const hasRateLimitError = result.hasError && result.errorType === 'rate_limit';
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -256,36 +251,6 @@ const ResultItem = ({ result, onDownload, onRemove }) => {
   );
 };
 
-const extractScoreFromPdf = async (blob) => {
-  const url = URL.createObjectURL(blob);
-  const pdf = await pdfjsLib.getDocument(url).promise;
-  const page = await pdf.getPage(1);
-  const textContent = await page.getTextContent();
-  const text = textContent.items.map((item) => item.str).join(' ');
-  
-  // Extract both score and total mark from the PDF
-  const scoreMatch = text.match(/Overall Score: (\d+\.?\d*)\/(\d+)/);
-  URL.revokeObjectURL(url);
-  
-  if (scoreMatch) {
-    return {
-      score: parseFloat(scoreMatch[1]),
-      totalMark: parseInt(scoreMatch[2])
-    };
-  }
-  
-  // Fallback to old pattern if new pattern not found
-  const oldScoreMatch = text.match(/Score: (\d+\.?\d*)\/(\d+)/);
-  if (oldScoreMatch) {
-    return {
-      score: parseFloat(oldScoreMatch[1]),
-      totalMark: parseInt(oldScoreMatch[2])
-    };
-  }
-  
-  return { score: 0, totalMark: 30 }; // Default fallback
-};
-
 const EssayEvaluator = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [files, setFiles] = useState([]);
@@ -300,6 +265,8 @@ const EssayEvaluator = () => {
   const [rubricText, setRubricText] = useState('');
   const [rubricFile, setRubricFile] = useState(null);
   const [selectedPresetRubric, setSelectedPresetRubric] = useState('');
+  const [isRubricLocked, setIsRubricLocked] = useState(false);
+  const [lockedRubricText, setLockedRubricText] = useState(''); // Added to store locked rubric content
   const [showApiKey, setShowApiKey] = useState(false);
   const { currentUser } = useAuth();
   const [sessionId, setSessionId] = useState(null);
@@ -307,14 +274,18 @@ const EssayEvaluator = () => {
   const [processingStatus, setProcessingStatus] = useState(null);
   const [batchProgress, setBatchProgress] = useState(0);
 
-  // Load API key from storage when component mounts or user changes
+  // Preserve locked rubric text
+  useEffect(() => {
+    if (isRubricLocked) {
+      setLockedRubricText(rubricText);
+    }
+  }, [isRubricLocked, rubricText]);
+
   useEffect(() => {
     if (currentUser) {
       const storedApiKey = retrieveApiKey(currentUser.uid);
       if (storedApiKey) {
         setApiKey(storedApiKey);
-        // We don't automatically set isApiKeyVerified to true
-        // The user should verify the key explicitly
       }
     }
   }, [currentUser]);
@@ -323,8 +294,6 @@ const EssayEvaluator = () => {
     const key = e.target.value;
     setApiKey(key);
     setIsApiKeyVerified(false);
-    
-    // Store the API key if the user is logged in
     if (currentUser) {
       storeApiKey(key, currentUser.uid);
     }
@@ -334,8 +303,6 @@ const EssayEvaluator = () => {
     if (window.confirm('Are you sure you want to clear your API key?')) {
       setApiKey('');
       setIsApiKeyVerified(false);
-      
-      // Remove the API key from storage if the user is logged in
       if (currentUser) {
         removeApiKey(currentUser.uid);
       }
@@ -344,158 +311,95 @@ const EssayEvaluator = () => {
 
   const handlePresetRubricChange = (e) => {
     const selectedId = e.target.value;
-    setSelectedPresetRubric(selectedId);
-    
-    if (selectedId) {
-      const preset = presetRubrics.find(rubric => rubric.id === selectedId);
-      if (preset) {
-        setRubricText(preset.content);
-        setRubricFile(null); // Clear any uploaded file
+    if (!isRubricLocked) {
+      setSelectedPresetRubric(selectedId);
+      if (selectedId) {
+        const preset = presetRubrics.find(rubric => rubric.id === selectedId);
+        if (preset) {
+          setRubricText(preset.content);
+          setRubricFile(null);
+        }
+      } else {
+        setRubricText('');
       }
     } else {
-      // If "None" is selected, clear the rubric text
-      setRubricText('');
+      alert("Rubric is locked. Unlock to change.");
     }
   };
 
   const handleVerifyApiKey = async () => {
     setError(null);
-    
-    // Basic validation
     if (!apiKey.trim()) {
       setError('Please enter an API key to verify.');
       return;
     }
-    
-    // Check if it looks like a Gemini API key
     if (!apiKey.trim().startsWith('AI')) {
       setError('This doesn\'t look like a valid Gemini API key. Gemini API keys typically start with "AI".');
       return;
     }
-    
-    // Ensure we have the correct URL format
     let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    
-    // Make sure the URL has the https:// prefix
     if (!baseUrl.startsWith('http')) {
       baseUrl = 'https://' + baseUrl;
     }
-    
     const apiUrl = `${baseUrl}/verify_api_key/`;
-    console.log(`Verifying API key using endpoint: ${apiUrl}`);
-    
     try {
       const formData = new FormData();
       formData.append('api_key', apiKey);
-      
-      // Add a timeout to the fetch request
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      // Use the API utility instead of hardcoded URL
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json'
-        }
+        signal: AbortSignal.timeout(10000),
+        headers: { 'Accept': 'application/json' }
       });
-      
-      clearTimeout(timeoutId);
-      console.log(`Response status: ${response.status}`);
-      
       if (response.ok) {
-        const data = await response.json();
-        console.log('API key verification successful:', data);
         setIsApiKeyVerified(true);
         setError(null);
         alert('API key verified successfully!');
       } else {
-        let errorMessage = 'Invalid API key. Please check and try again.';
-        
-        // Handle 404 errors specifically
-        if (response.status === 404) {
-          errorMessage = `API endpoint not found (404). Please check your backend URL configuration: ${baseUrl}`;
-          console.error('404 error - API endpoint not found');
-        } else if (response.status === 405) {
-          errorMessage = `Method not allowed (405). The API endpoint exists but doesn't accept this request method.`;
-          console.error('405 error - Method not allowed');
-        } else {
-          // For other errors, try to parse the JSON response
-          try {
-            // Clone the response before reading it
-            const clonedResponse = response.clone();
-            const errorData = await clonedResponse.json();
-            errorMessage = errorData.detail || errorMessage;
-            console.error('API key verification failed:', errorData);
-            
-            // Provide more helpful guidance based on error
-            if (errorMessage.includes('invalid API key') || errorMessage.includes('Invalid API key')) {
-              errorMessage += ' Make sure you\'re using a key from Google AI Studio (https://aistudio.google.com/app/apikey).';
-            }
-          } catch (parseError) {
-            console.error('Failed to parse error response as JSON:', parseError);
-            
-            // Only try to read as text if JSON parsing failed
-            try {
-              const textResponse = response.clone();
-              const errorText = await textResponse.text();
-              console.error('Error response text:', errorText);
-            } catch (textError) {
-              console.error('Failed to get error response text:', textError);
-            }
-          }
-        }
-        
+        const errorData = await response.json();
         setIsApiKeyVerified(false);
-        setError(errorMessage);
+        setError(errorData.detail || 'Invalid API key. Please check and try again.');
       }
     } catch (err) {
-      console.error('Network error during API key verification:', err);
       setIsApiKeyVerified(false);
-      setError(`Failed to verify API key: ${err.message}. Please check your internet connection and backend URL configuration.`);
+      setError(`Failed to verify API key: ${err.message}.`);
     }
   };
 
   const handleRubricUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || file.size === 0) {
-      setError('Cannot read an empty rubric file. Please upload a valid file.');
+      setError('Cannot read an empty rubric file.');
       return;
     }
-    
-    // Check if file is PDF or TXT
     const fileExt = file.name.split('.').pop().toLowerCase();
     if (fileExt !== 'pdf' && fileExt !== 'txt') {
       setError('Only PDF and TXT files are supported for rubrics.');
       return;
     }
-    
+    if (isRubricLocked) {
+      alert("Rubric is locked. Unlock to upload a new file.");
+      e.target.value = null;
+      return;
+    }
     setRubricFile(file);
+    setSelectedPresetRubric('');
+    setRubricText('');
     const formData = new FormData();
     formData.append('file', file);
-    
     try {
-      // Ensure we have the correct URL format
       let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      
-      // Make sure the URL has the https:// prefix
       if (!baseUrl.startsWith('http')) {
         baseUrl = 'https://' + baseUrl;
       }
-      
-      // Use the new dedicated endpoint for rubric file uploads
       const response = await fetch(`${baseUrl}/upload-rubric-file/`, {
         method: 'POST',
         body: formData,
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to extract rubric text');
       }
-      
       const data = await response.json();
       setRubricText(data.text);
     } catch (err) {
@@ -508,7 +412,6 @@ const EssayEvaluator = () => {
       setError(null);
       setProcessingStatus(null);
       setBatchProgress(0);
-      
       if (!apiKey.trim()) throw new Error('Please enter your Gemini API key.');
       if (!isApiKeyVerified) throw new Error('Please verify your API key first.');
       if (activeTab === 'upload' && files.length === 0) {
@@ -517,175 +420,118 @@ const EssayEvaluator = () => {
       if (activeTab === 'paste' && !essayText.trim()) {
         throw new Error('Please enter your essay text.');
       }
-      
-      // Clear previous results and evaluations
       setResults([]);
       setEvaluations([]);
       setSessionId(null);
-      
-      // Ensure we have the correct URL format
       let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      
-      // Make sure the URL has the https:// prefix
       if (!baseUrl.startsWith('http')) {
         baseUrl = 'https://' + baseUrl;
       }
-      
-      // Function to handle pasted text
+
       const processPastedText = async () => {
         setIsLoading(true);
         setProcessingFile('Pasted essay');
-        
         if (essayText.length > 30000) {
           setProcessingStatus('Processing large document...');
         }
-        
-        // Count multiple essays based on different student identifier patterns
         const studentNameMatches = (essayText.match(/Student Name:/gi) || []).length;
         const studentMatches = (essayText.match(/Student:/gi) || []).length;
         const nameMatches = (essayText.match(/Name:/gi) || []).length;
-        
-        // Subtract overlapping matches (e.g., "Student Name:" also matches "Student:")
         const totalMatches = studentNameMatches + studentMatches + nameMatches;
-        
-        // Check for multiple essays based on newline patterns
         const multipleSectionsIndicator = essayText.split(/\n{3,}/).length > 2;
-        
         if (totalMatches > 1 || (multipleSectionsIndicator && totalMatches > 0)) {
           const estimatedEssayCount = Math.max(1, totalMatches);
-          
-          // If we have many essays, warn the user about potential rate limits
           if (estimatedEssayCount > 5) {
             setProcessingStatus(`Processing ${estimatedEssayCount} essays...`);
-            
-            // Split the essays into batches to avoid rate limits
-            try {
-              const essays = splitEssaysText(essayText);
-              
-              if (essays.length > 5) {
-                // Process in batches of 3-4 essays at a time
-                const batchSize = 3;
-                const totalBatches = Math.ceil(essays.length / batchSize);
-                
-                for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-                  const batchStart = batchIndex * batchSize;
-                  const batchEnd = Math.min(batchStart + batchSize, essays.length);
-                  const currentBatch = essays.slice(batchStart, batchEnd);
-                  
-                  setBatchProgress(Math.round((batchIndex / totalBatches) * 100));
-                  setProcessingStatus(`Processing essays (${batchIndex + 1}/${totalBatches})...`);
-                  
-                  // Create a single text with just this batch of essays
-                  const batchText = currentBatch.join("\n\n---\n\n");
-                  
-                  // Process this batch
-                  await processEssayBatch(batchText, `Batch ${batchIndex + 1}`);
-                  
-                  // Add a delay between batches to avoid rate limits
-                  if (batchIndex < totalBatches - 1) {
-                    const delayTime = 5000 + (Math.random() * 3000); // 5-8 second delay between batches
-                    setProcessingStatus(`Preparing next batch...`);
-                    await new Promise(resolve => setTimeout(resolve, delayTime));
-                  }
+            const essays = splitEssaysText(essayText);
+            if (essays.length > 5) {
+              const batchSize = 3;
+              const totalBatches = Math.ceil(essays.length / batchSize);
+              for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+                const batchStart = batchIndex * batchSize;
+                const batchEnd = Math.min(batchStart + batchSize, essays.length);
+                const currentBatch = essays.slice(batchStart, batchEnd);
+                setBatchProgress(Math.round((batchIndex / totalBatches) * 100));
+                setProcessingStatus(`Processing essays (${batchIndex + 1}/${totalBatches})...`);
+                const batchText = currentBatch.join("\n\n---\n\n");
+                await processEssayBatch(batchText, `Batch ${batchIndex + 1}`);
+                if (batchIndex < totalBatches - 1) {
+                  const delayTime = 5000 + (Math.random() * 3000);
+                  setProcessingStatus(`Preparing next batch...`);
+                  await new Promise(resolve => setTimeout(resolve, delayTime));
                 }
-                
-                setBatchProgress(100);
-                setProcessingStatus(`Completing evaluation...`);
-                setIsLoading(false);
-                setProcessingFile(null);
-                setEssayText('');
-                return;
               }
-            } catch (err) {
-              console.error("Error splitting essays:", err);
-              // Fall back to normal processing if splitting fails
+              setBatchProgress(100);
+              setProcessingStatus(`Completing evaluation...`);
+              setIsLoading(false);
+              setProcessingFile(null);
+              setEssayText('');
+              return;
             }
           }
-          
           setProcessingStatus(`Processing ${estimatedEssayCount} essays...`);
         } else {
           setProcessingStatus('Processing essay...');
         }
-        
-        // Process normally if we didn't take the batching path
         await processEssayBatch(essayText, 'Pasted essay');
         setEssayText('');
       };
-      
-      // Helper function to process a single batch of essays
+
       const processEssayBatch = async (text, batchName) => {
-        try {
-          // Prepare form data
-          const formData = new FormData();
-          formData.append('api_key', apiKey);
-          
-          // Handle rubric - either use text or rubric file
-          if (rubricText && rubricText.trim()) {
-            formData.append('rubric_text', rubricText.trim());
+        const formData = new FormData();
+        formData.append('api_key', apiKey);
+        // Updated rubric handling
+        if (isRubricLocked && lockedRubricText) {
+          formData.append('rubric_text', lockedRubricText);
+          console.log("Appending locked rubric_text to FormData");
+        } else if (selectedPresetRubric) {
+          const preset = presetRubrics.find(rubric => rubric.id === selectedPresetRubric);
+          if (preset) {
+            formData.append('rubric_text', preset.content);
+            console.log("Appending preset rubric_text to FormData");
           }
-          
-          const essayBlob = new Blob([text], { type: 'text/plain' });
-          formData.append('essay', essayBlob, `${batchName}.txt`);
-          
-          // Ensure we have the correct URL format
-          let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-          if (!baseUrl.startsWith('http')) {
-            baseUrl = 'https://' + baseUrl;
-          }
-          
-          console.log(`Sending batch: ${batchName} for processing`);
-          
-          const response = await fetch(`${baseUrl}/evaluate/`, {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to evaluate essay');
-          }
-          
-          // Check if response is a PDF (direct result) or JSON (multiple essays)
-          const contentType = response.headers.get('content-type');
-          
-          if (contentType && contentType.includes('application/pdf')) {
-            // Single essay response with PDF
-            console.log(`Received single essay response for batch: ${batchName}`);
-            await handleSingleEssayResponse(response, batchName);
-          } else {
-            // Multiple essays response
-            console.log(`Received multiple essays response for batch: ${batchName}`);
-            await handleMultipleEssaysResponse(response, batchName);
-          }
-          
-          // Log evaluation count after processing this batch
-          console.log(`Current evaluation count after processing ${batchName}: ${evaluations.length}`);
-        } catch (err) {
-          setError(`Error: ${err.message || 'An error occurred while evaluating the essays'}`);
+        } else if (rubricFile) {
+          formData.append('rubric_file', rubricFile);
+          console.log("Appending rubric_file to FormData");
+        } else if (rubricText && rubricText.trim()) {
+          formData.append('rubric_text', rubricText.trim());
+          console.log("Appending custom rubric_text to FormData");
+        } else {
+          console.log("No rubric provided, backend will use default.");
+        }
+        const essayBlob = new Blob([text], { type: 'text/plain' });
+        formData.append('essay', essayBlob, `${batchName}.txt`);
+        console.log(`[processEssayBatch] Sending evaluation request for: ${batchName}`);
+        console.log(`[processEssayBatch] Rubric File:`, rubricFile);
+        console.log(`[processEssayBatch] Rubric Text (Preview):`, rubricText ? rubricText.substring(0, 100) + '...' : 'None');
+        const response = await fetch(`${baseUrl}/evaluate/`, {
+          method: 'POST',
+          body: formData,
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to evaluate essay');
+        }
+        const data = await response.json();
+        if (data.evaluation_status === 'single') {
+          await handleSingleEssayResponseJson(data, batchName);
+        } else if (data.evaluation_status === 'multiple') {
+          await handleMultipleEssaysResponse(data, batchName);
+        } else {
+          throw new Error(data.detail || 'Unexpected response format');
         }
       };
-      
-      // Helper function to split essay text into individual essays
+
       const splitEssaysText = (text) => {
-        // Use multiple patterns to match student identifiers
-        const patterns = [
-          /Student Name:/i,
-          /Student:/i,
-          /Name:/i
-        ];
-        
-        // Try to split by student identifiers first
+        const patterns = [/Student Name:/i, /Student:/i, /Name:/i];
         let essays = [];
         let lines = text.split('\n');
         let currentEssay = '';
         let foundAnyMarker = false;
-        
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
           const isMarkerLine = patterns.some(pattern => pattern.test(line));
-          
           if (isMarkerLine && currentEssay.trim().length > 0) {
-            // Save the previous essay
             essays.push(currentEssay.trim());
             currentEssay = line + '\n';
             foundAnyMarker = true;
@@ -693,574 +539,295 @@ const EssayEvaluator = () => {
             currentEssay += line + '\n';
           }
         }
-        
-        // Add the last essay
         if (currentEssay.trim().length > 0) {
           essays.push(currentEssay.trim());
         }
-        
-        // If we didn't find any markers, try to split by multiple blank lines
         if (!foundAnyMarker || essays.length <= 1) {
           essays = text.split(/\n{3,}/).filter(essay => essay.trim().length > 100);
         }
-        
-        // If we still have only one essay but it's very long, try to split by markdown-style separators
         if (essays.length <= 1 && text.length > 10000) {
           essays = text.split(/\n---+\n|\n\*\*\*+\n|\n___+\n/)
             .filter(essay => essay.trim().length > 100);
         }
-        
         return essays;
       };
-      
-      // Main execution - process based on active tab
+
       if (activeTab === 'upload') {
         await processUploadedFiles();
       } else {
         await processPastedText();
       }
-      
     } catch (err) {
-      setError(err.message || 'An error occurred while evaluating the essay.');
+      setError(err.message || 'An error occurred.');
       setIsLoading(false);
       setProcessingFile(null);
       setProcessingStatus(null);
     }
   };
 
-  const handleDownload = async (url, filename, result) => {
-    // If URL is available, download directly
-    if (url) {
-      const a = document.createElement('a');
-      a.href = url;
-      
-      // Extract student name for filename
-      const studentName = result?.student_name || "Unknown";
-      const hasStudentName = studentName !== "Unknown";
-      const safeName = hasStudentName ? studentName.replace(/[^a-zA-Z0-9]/g, '_') : filename.split('.')[0];
-      
-      a.download = `${safeName}_report.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+  const handleDownload = async (result) => {
+    if (!result || !result.sessionId || !result.filename) {
+      setError('Cannot download report: Missing session data or filename.');
       return;
     }
-    
-    // Otherwise, we need to request it from the server
     try {
       setIsLoading(true);
-      
-      // Ensure we have the correct URL format
+      setError(null);
       let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      
-      // Make sure the URL has the https:// prefix
       if (!baseUrl.startsWith('http')) {
         baseUrl = 'https://' + baseUrl;
       }
-      
-      if (!result || !result.sessionId) {
-        throw new Error('Missing session data for download');
-      }
-      
       const response = await fetch(`${baseUrl}/download-report/${result.sessionId}/${result.filename}`, {
         method: 'GET',
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to download report');
       }
-      
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      
+      const downloadUrlObject = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = downloadUrlObject;
       a.download = result.filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(downloadUrlObject);
     } catch (err) {
-      setError(err.message || 'An error occurred while downloading the report');
+      setError(err.message || 'Error downloading report');
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   const handleRemoveResult = (id) => {
     setResults(prev => prev.filter(result => result.id !== id));
   };
-  
+
   const handleDownloadAll = async () => {
-    // Check if we have evaluations to download
     if (evaluations.length === 0) {
       setError('No evaluations available for download');
       return;
     }
-    
     try {
       setIsLoading(true);
-      
-      // Ensure we have the correct URL format
       let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      
-      // Make sure the URL has the https:// prefix
       if (!baseUrl.startsWith('http')) {
         baseUrl = 'https://' + baseUrl;
       }
-      
-      console.log(`Downloading ZIP with ${evaluations.length} evaluations`);
-      
-      // Deep copy and validate all evaluations to ensure they have proper structure
-      const processedEvaluations = evaluations.map((evaluation, index) => {
-        // Create a normalized base object
-        const normalizedEval = {
-          student_name: typeof evaluation.student_name === 'string' ? evaluation.student_name : `Essay ${index + 1}`,
-          overall_score: Number(evaluation.overall_score || 0),
-          criteria: [],
-          suggestions: [],
-          highlighted_passages: []
-        };
-        
-        // Ensure criteria is an array with at least one item
-        if (Array.isArray(evaluation.criteria) && evaluation.criteria.length > 0) {
-          // Normalize each criterion
-          normalizedEval.criteria = evaluation.criteria.map(crit => {
-            if (typeof crit !== 'object') return null;
-            return {
-              name: typeof crit.name === 'string' ? crit.name : 'Quality',
-              score: Number(crit.score || 0),
-              max_score: Number(crit.max_score || 10),
-              feedback: typeof crit.feedback === 'string' ? crit.feedback : 'No feedback provided'
-            };
-          }).filter(Boolean); // Remove any null entries
-        }
-        
-        // If no valid criteria, add a default one
-        if (normalizedEval.criteria.length === 0) {
-          normalizedEval.criteria = [{
-            name: "Overall Quality",
-            score: normalizedEval.overall_score,
-            max_score: 10,
-            feedback: "No specific feedback provided"
-          }];
-        }
-        
-        // Normalize suggestions
-        if (Array.isArray(evaluation.suggestions)) {
-          normalizedEval.suggestions = evaluation.suggestions
-            .filter(s => s)
-            .map(s => typeof s === 'string' ? s : String(s));
-        }
-        
-        // Normalize highlighted passages
-        if (Array.isArray(evaluation.highlighted_passages)) {
-          normalizedEval.highlighted_passages = evaluation.highlighted_passages
-            .filter(p => p && typeof p === 'object')
-            .map(p => ({
-              text: typeof p.text === 'string' ? p.text : '',
-              issue: typeof p.issue === 'string' ? p.issue : '',
-              suggestion: typeof p.suggestion === 'string' ? p.suggestion : '',
-              example_revision: typeof p.example_revision === 'string' ? p.example_revision : ''
-            }));
-        }
-        
-        return normalizedEval;
-      });
-      
-      // Log the processed data
-      console.log(`Prepared ${processedEvaluations.length} normalized evaluations`);
-      
-      // Debug: Log a sample evaluation
-      if (processedEvaluations.length > 0) {
-        console.log('Sample evaluation:', processedEvaluations[0]);
-      }
-      
-      // Create payload with validated data
-      const payload = {
-        session_id: sessionId,
-        evaluations: processedEvaluations
-      };
-      
-      // Send request to server
+      const processedEvaluations = evaluations.map((evaluation, index) => ({
+        student_name: evaluation.student_name || `Essay ${index + 1}`,
+        overall_score: Number(evaluation.overall_score || 0),
+        max_score: evaluation.max_score || 10,
+        criteria: Array.isArray(evaluation.criteria) && evaluation.criteria.length > 0 ? evaluation.criteria : [{
+          name: "Overall Quality",
+          score: evaluation.overall_score || 0,
+          max_score: evaluation.max_score || 10,
+          feedback: "No specific feedback"
+        }],
+        suggestions: evaluation.suggestions || [],
+        highlighted_passages: evaluation.highlighted_passages || [],
+        mini_lessons: evaluation.mini_lessons || [] // Include mini-lessons
+      }));
+      const payload = { session_id: sessionId, evaluations: processedEvaluations };
       const response = await fetch(`${baseUrl}/generate-all-zip/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      
       if (!response.ok) {
-        console.error('Error response:', response.status, response.statusText);
-        let errorMessage = `Server error: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-        } catch (e) {
-          // If we can't parse JSON, use the status text
-        }
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to generate zip');
       }
-      
-      console.log(`ZIP file generated successfully, downloading...`);
-      
       const blob = await response.blob();
-      console.log(`ZIP blob size: ${blob.size} bytes`);
-      
-      if (blob.size < 100) {
-        throw new Error('The generated ZIP file is empty or too small. Please try again.');
-      }
-      
       const url = window.URL.createObjectURL(blob);
-      
       const a = document.createElement('a');
       a.href = url;
       a.download = 'evaluation_reports.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
       window.URL.revokeObjectURL(url);
-      
-      console.log(`Downloaded ZIP file with ${evaluations.length} evaluations`);
     } catch (err) {
-      console.error("Error downloading all reports:", err);
-      setError(err.message || 'An error occurred while generating the zip file');
+      setError(err.message || 'Error generating zip file');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to handle uploaded files
   const processUploadedFiles = async () => {
-    // Calculate total expected files including possible multiple essays in each file
-    let totalExpectedFiles = files.length;
-    
-    // Determine if we should batch process or do individual files
-    let shouldBatchProcess = files.length > 5;
-    
+    const shouldBatchProcess = files.length > 5;
     if (shouldBatchProcess) {
       setProcessingStatus(`Processing ${files.length} files...`);
-      
-      // Process files in smaller batches
       const batchSize = 3;
       const totalBatches = Math.ceil(files.length / batchSize);
-      
       for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
         const batchStart = batchIndex * batchSize;
         const batchEnd = Math.min(batchStart + batchSize, files.length);
         const currentBatchFiles = files.slice(batchStart, batchEnd);
-        
         setBatchProgress(Math.round((batchIndex / totalBatches) * 100));
         setProcessingStatus(`Processing files (${batchIndex + 1}/${totalBatches})...`);
-        
-        // Process each file in this batch
-        for (let i = 0; i < currentBatchFiles.length; i++) {
-          const file = currentBatchFiles[i];
+        for (const file of currentBatchFiles) {
           setProcessingFile(file.name);
           setIsLoading(true);
-          
           try {
-            // Process the file
             await processFile(file);
           } catch (err) {
             setError(`Error processing ${file.name}: ${err.message}`);
-            // Continue with next file instead of stopping completely
           }
         }
-        
-        // Add a delay between batches to avoid rate limits
         if (batchIndex < totalBatches - 1) {
-          const delayTime = 5000 + (Math.random() * 3000); // 5-8 second delay between batches
+          const delayTime = 5000 + (Math.random() * 3000);
           setProcessingStatus(`Preparing next batch...`);
           await new Promise(resolve => setTimeout(resolve, delayTime));
         }
       }
-      
       setBatchProgress(100);
       setProcessingStatus(`Completing evaluation...`);
-      setIsLoading(false);
-      setProcessingFile(null);
-      setProcessingStatus(null);
     } else {
-      // Process files individually (traditional approach)
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setProcessingFile(file.name);
         setIsLoading(true);
         setBatchProgress(Math.round((i / files.length) * 100));
-        
-        if (files.length > 1) {
-          setProcessingStatus(`Processing file ${i+1} of ${files.length}...`);
-        } else {
-          setProcessingStatus('Processing file...');
-        }
-        
+        setProcessingStatus(files.length > 1 ? `Processing file ${i+1} of ${files.length}...` : 'Processing file...');
         try {
-          // Process the file
           await processFile(file);
         } catch (err) {
           setError(`Error processing ${file.name}: ${err.message}`);
-          // Continue with next file instead of stopping completely
-          continue;
         }
       }
-      
-      setIsLoading(false);
-      setProcessingFile(null);
-      setProcessingStatus(null);
-      setBatchProgress(100);
     }
+    setIsLoading(false);
+    setProcessingFile(null);
+    setProcessingStatus(null);
+    setBatchProgress(100);
   };
 
-  // Helper function to process a single file
   const processFile = async (file) => {
-    // Ensure we have the correct URL format
     let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     if (!baseUrl.startsWith('http')) {
       baseUrl = 'https://' + baseUrl;
     }
-    
-    // Prepare form data
     const formData = new FormData();
     formData.append('api_key', apiKey);
-    
-    // Handle rubric - either use text or rubric file
-    if (rubricText && rubricText.trim()) {
+    if (isRubricLocked && lockedRubricText) {
+      formData.append('rubric_text', lockedRubricText);
+      console.log("Appending locked rubric_text to FormData");
+    } else if (selectedPresetRubric) {
+      const preset = presetRubrics.find(rubric => rubric.id === selectedPresetRubric);
+      if (preset) {
+        formData.append('rubric_text', preset.content);
+        console.log("Appending preset rubric_text to FormData");
+      }
+    } else if (rubricFile) {
+      formData.append('rubric_file', rubricFile);
+      console.log("Appending rubric_file to FormData");
+    } else if (rubricText && rubricText.trim()) {
       formData.append('rubric_text', rubricText.trim());
+      console.log("Appending custom rubric_text to FormData");
+    } else {
+      console.log("No rubric provided, backend will use default.");
     }
-    
     formData.append('essay', file);
-    
+    console.log(`[processFile] Sending evaluation request for: ${file.name}`);
+    console.log(`[processFile] Rubric File:`, rubricFile);
+    console.log(`[processFile] Rubric Text (Preview):`, rubricText ? rubricText.substring(0, 100) + '...' : 'None');
     const response = await fetch(`${baseUrl}/evaluate/`, {
       method: 'POST',
       body: formData,
     });
-    
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.detail || `Failed to evaluate ${file.name}`);
     }
-    
-    // Check if response is a PDF (direct result) or JSON (multiple essays)
-    const contentType = response.headers.get('content-type');
-    
-    if (contentType && contentType.includes('application/pdf')) {
-      // Single essay response with PDF
-      await handleSingleEssayResponse(response, file.name);
+    const data = await response.json();
+    if (data.evaluation_status === 'single') {
+      await handleSingleEssayResponseJson(data, file.name);
+    } else if (data.evaluation_status === 'multiple') {
+      await handleMultipleEssaysResponse(data, file.name);
     } else {
-      // Multiple essays response
-      await handleMultipleEssaysResponse(response, file.name);
+      throw new Error(data.detail || 'Unexpected response format');
     }
   };
 
-  // Helper function for single essay response
-  const handleSingleEssayResponse = async (response, filename) => {
-    try {
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      
-      // Get score and total mark from headers
-      const scoreHeader = response.headers.get('X-Essay-Score');
-      const totalMarkHeader = response.headers.get('X-Essay-Total-Mark') || '10';
-      const sessionId = response.headers.get('X-Session-ID');
-      let studentName = response.headers.get('X-Student-Name') || 'Unknown';
-      
-      if (sessionId) {
-        setSessionId(sessionId);
-      }
-      
-      // Parse score information
-      const scoreData = {
-        score: scoreHeader ? parseFloat(scoreHeader) : 0,
-        totalMark: totalMarkHeader ? parseFloat(totalMarkHeader) : 10
-      };
-      
-      // Extract student name from PDF (if possible)
-      let pdfUrl = null;
-      try {
-        pdfUrl = URL.createObjectURL(blob);
-        const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
-        const page = await pdf.getPage(1);
-        const textContent = await page.getTextContent();
-        const text = textContent.items.map(item => item.str).join(' ');
-        
-        // Try to extract student name with different patterns
-        for (const pattern of [/Student Name:\s+([A-Za-z]+(?: [A-Za-z]+){0,2})/, /Student:\s+([A-Za-z]+(?: [A-Za-z]+){0,2})/, /Name:\s+([A-Za-z]+(?: [A-Za-z]+){0,2})/]) {
-          const match = text.match(pattern);
-          if (match && match[1]) {
-            studentName = match[1].trim();
-            break;
-          }
-        }
-        
-        // If no match found, look for a name in a report title line
-        if (studentName === "Unknown") {
-          const titleMatch = text.match(/Report[\s\n]+([A-Za-z]+(?: [A-Za-z]+){0,2})[\s\n]/);
-          if (titleMatch && titleMatch[1]) {
-            studentName = titleMatch[1].trim();
-          }
-        }
-        
-        URL.revokeObjectURL(pdfUrl);
-      } catch (err) {
-        console.error("Error extracting student name from PDF:", err);
-      }
-      
-      // Create a normalized evaluation object and add to evaluations array
-      const singleEvaluation = {
-        student_name: studentName,
-        overall_score: scoreData.score,
-        max_score: scoreData.totalMark,
-        criteria: [{ name: "Overall", score: scoreData.score, max_score: scoreData.totalMark }],
-        suggestions: [],
-        highlighted_passages: []
-      };
-      
-      console.log(`Adding single evaluation for ${studentName} to evaluations array`);
-      setEvaluations(prevEvaluations => [...prevEvaluations, singleEvaluation]);
-      
-      setResults((prev) => [
-        ...prev,
-        { 
-          id: Date.now() + Math.random(), 
-          filename: filename, 
-          url, 
-          score: scoreData.score,
-          totalMark: scoreData.totalMark,
-          student_name: studentName
-        },
-      ]);
-    } catch (err) {
-      throw new Error(`Error processing response: ${err.message}`);
+  const handleSingleEssayResponseJson = async (data, originalFilename) => {
+    const { session_id, filename, student_name, overall_score, max_score, mini_lessons } = data;
+    if (!session_id || !filename) {
+        throw new Error("Missing session_id or filename.");
     }
+    if (!sessionId) {
+      setSessionId(session_id);
+    }
+    const singleEvaluation = {
+      student_name: student_name || "Unknown",
+      overall_score: overall_score || 0,
+      max_score: max_score || 10,
+      criteria: data.criteria || [{ name: "Overall", score: overall_score || 0, max_score: max_score || 10, feedback: "N/A" }],
+      suggestions: data.suggestions || [],
+      highlighted_passages: data.highlighted_passages || [],
+      mini_lessons: mini_lessons || [] // Include mini-lessons
+    };
+    setEvaluations(prev => [...prev, singleEvaluation]);
+    if (!singleEvaluation.mini_lessons || singleEvaluation.mini_lessons.length === 0) {
+      console.warn("No mini-lessons provided in the evaluation data for", filename);
+    }
+    setResults((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        filename,
+        student_name: student_name || "Unknown",
+        score: overall_score || 0,
+        maxScore: max_score || 10,
+        sessionId: session_id,
+        needsDownload: true
+      },
+    ]);
   };
 
-  // Helper function for multiple essays response
-  const handleMultipleEssaysResponse = async (response, filename = 'Batch') => {
-    try {
-      const jsonData = await response.json();
-      
-      console.log("Multiple essays response:", jsonData);
-      
-      if (jsonData.multiple_essays) {
-        // Store session ID for batch operations
+  const handleMultipleEssaysResponse = async (jsonData, filename = 'Batch') => {
+    if (jsonData.evaluation_status === 'multiple') {
+      if (jsonData.session_id && !sessionId) {
         setSessionId(jsonData.session_id);
-        
-        const essayCount = jsonData.count || (jsonData.results ? jsonData.results.length : 0);
-        const expectedCount = essayCount;
-        
-        // Check if we got fewer results than expected (possible rate limit)
-        if (jsonData.results && jsonData.results.length < expectedCount) {
-          setProcessingStatus(`Processed ${jsonData.results.length} of ${expectedCount} essays`);
-        } else {
-          setProcessingStatus(`Finalizing ${essayCount} evaluations...`);
-        }
-        
-        // Store evaluations for potential zip download - ACCUMULATE instead of replacing
-        if (jsonData.results && jsonData.results.length > 0) {
-          // Normalize evaluation data for consistency
-          const normalizedResults = jsonData.results.map(result => {
-            // Ensure that each result has all required fields for PDF generation
-            return {
-              student_name: result.student_name || "Unknown",
-              overall_score: result.overall_score || 0,
-              max_score: result.max_score || 10,
-              criteria: result.criteria || [],
-              suggestions: result.suggestions || [],
-              highlighted_passages: result.highlighted_passages || []
-            };
-          });
-          
-          console.log(`Adding ${normalizedResults.length} normalized evaluations to state`);
-          setEvaluations(prevEvaluations => [...prevEvaluations, ...normalizedResults]);
-        }
-        
-        if (!jsonData.results || jsonData.results.length === 0) {
-          throw new Error('No essay results returned from server');
-        }
-        
-        // Add each result to the results list
-        const newResults = jsonData.results.map((result, index) => {
-          // Check if this result contains a rate limit error
-          const hasRateLimitError = 
-            result.suggestions?.some(s => s.includes("rate limit")) || 
-            result.criteria?.some(c => c.feedback?.includes("rate limit"));
-          
-          return {
-            id: (result.id || index) + Date.now(),
-            filename: result.filename || `${filename}_part${(result.id || index) + 1}`,
-            student_name: result.student_name || `Essay ${index + 1}`,
-            score: result.overall_score || 0,
-            maxScore: result.max_score || 10,
-            sessionId: jsonData.session_id,
-            needsDownload: true,
-            evaluationData: result, // Store the evaluation data for display
-            hasError: hasRateLimitError,
-            errorType: hasRateLimitError ? 'rate_limit' : null
-          };
-        });
-        
-        setResults(prev => [...prev, ...newResults]);
-        
-        // Check if any results had rate limit errors
-        const rateLimitedCount = newResults.filter(r => r.hasError && r.errorType === 'rate_limit').length;
-        if (rateLimitedCount > 0) {
-          setError(`${rateLimitedCount} essays encountered API rate limits. Try processing fewer essays at once or wait a few minutes before processing more essays.`);
-        }
-        
-        console.log(`Processed ${newResults.length} essays`);
-      } else {
-        // Check if this is just a single essay response in JSON format
-        if (jsonData.student_name && jsonData.overall_score !== undefined) {
-          console.log("Single essay JSON response detected");
-          
-          // Check if this result contains a rate limit error
-          const hasRateLimitError = 
-            jsonData.suggestions?.some(s => s.includes("rate limit")) || 
-            jsonData.criteria?.some(c => c.feedback?.includes("rate limit"));
-          
-          // Create a mock result for this single essay
-          const singleResult = {
-            id: Date.now(),
-            filename: filename,
-            student_name: jsonData.student_name,
-            score: jsonData.overall_score,
-            maxScore: jsonData.criteria ? 
-              jsonData.criteria.reduce((sum, c) => sum + (c.max_score || 10), 0) : 10,
-            sessionId: null,
-            needsDownload: true,
-            evaluationData: jsonData, // Store the evaluation data for display
-            hasError: hasRateLimitError,
-            errorType: hasRateLimitError ? 'rate_limit' : null
-          };
-          
-          setResults(prev => [...prev, singleResult]);
-          
-          // Also add to evaluations array for consistency
-          setEvaluations(prevEvaluations => [...prevEvaluations, jsonData]);
-          
-          if (hasRateLimitError) {
-            setError(`Essay evaluation was affected by API rate limits. Try again in a few minutes.`);
+      }
+      const essayCount = jsonData.count || (jsonData.results ? jsonData.results.length : 0);
+      if (jsonData.results && jsonData.results.length < essayCount) {
+        setProcessingStatus(`Processed ${jsonData.results.length} of ${essayCount} essays`);
+      } else if (essayCount > 0) {
+        setProcessingStatus(`Finalizing ${essayCount} evaluations...`);
+      }
+      if (jsonData.results && jsonData.results.length > 0) {
+        const normalizedResults = jsonData.results.map(result => ({
+          student_name: result.student_name || "Unknown",
+          overall_score: result.overall_score || 0,
+          max_score: result.max_score || 10,
+          criteria: result.criteria || [],
+          suggestions: result.suggestions || [],
+          highlighted_passages: result.highlighted_passages || [],
+          mini_lessons: result.mini_lessons || [] // Include mini-lessons
+        }));
+        normalizedResults.forEach(result => {
+          if (!result.mini_lessons || result.mini_lessons.length === 0) {
+            console.warn("No mini-lessons provided in the evaluation data for", result.student_name);
           }
-        } else {
-          // Handle unexpected response format
-          throw new Error('Unexpected response format from server');
-        }
+        });
+        setEvaluations(prev => [...prev, ...normalizedResults]);
+        const newResults = jsonData.results.map((result, index) => ({
+          id: (result.id !== undefined ? result.id : index) + Date.now() + Math.random(),
+          filename: result.filename || `${filename}_part${(result.id !== undefined ? result.id : index) + 1}`,
+          student_name: result.student_name || `Essay ${index + 1}`,
+          score: result.overall_score || 0,
+          maxScore: result.max_score || 10,
+          sessionId: jsonData.session_id,
+          needsDownload: true
+        }));
+        setResults(prev => [...prev, ...newResults]);
       }
-    } catch (err) {
-      console.error("Error processing multiple essays:", err);
-      
-      // Check if this is a rate limit error
-      if (err.message.includes('429') || err.message.toLowerCase().includes('rate limit') || 
-          err.message.toLowerCase().includes('quota') || err.message.toLowerCase().includes('resource exhausted')) {
-        setError(`Google Gemini API rate limit exceeded. Please try again with fewer essays or wait a few minutes before processing more.`);
-      } else {
-        throw new Error(`Error processing multiple essays: ${err.message}`);
-      }
+    } else if (jsonData.student_name && jsonData.overall_score !== undefined && jsonData.session_id && jsonData.filename) {
+      await handleSingleEssayResponseJson(jsonData, filename);
+    } else {
+      throw new Error('Unexpected response format');
     }
   };
 
@@ -1329,14 +896,11 @@ const EssayEvaluator = () => {
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-xs text-gray-400">
-                  Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-navy-blue hover:underline">Google AI Studio</a>. 
-                  Make sure to use a valid Gemini API key that starts with "AI".
+                  Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-navy-blue hover:underline">Google AI Studio</a>.
                 </p>
                 {currentUser ? (
                   <p className="text-xs text-gray-400">
-                    {hasStoredApiKey(currentUser.uid) ? 
-                      "Your API key is securely stored" : 
-                      "Your API key will be securely stored"}
+                    {hasStoredApiKey(currentUser.uid) ? "Your API key is securely stored" : "Your API key will be securely stored"}
                   </p>
                 ) : (
                   <p className="text-xs text-gray-400">
@@ -1388,51 +952,73 @@ const EssayEvaluator = () => {
               <motion.div key="rubric" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <FloatingCard>
                   <div className="space-y-6">
-                    <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-semibold text-navy-blue">Configure Rubric</h3>
+                      <motion.button
+                        onClick={() => setIsRubricLocked(!isRubricLocked)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`flex items-center px-3 py-1 rounded-full text-xs transition-colors ${
+                          isRubricLocked
+                            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                            : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        }`}
+                        title={isRubricLocked ? "Unlock Rubric" : "Lock Rubric"}
+                      >
+                        {isRubricLocked ? <Lock className="w-3 h-3 mr-1" /> : <Unlock className="w-3 h-3 mr-1" />}
+                        {isRubricLocked ? 'Locked' : 'Unlocked'}
+                      </motion.button>
+                    </div>
+                    <div className={`transition-opacity duration-300 ${isRubricLocked ? 'opacity-60' : 'opacity-100'}`}>
                       <label className="block text-gray-300 mb-2">Select Preset Rubric</label>
                       <select
                         value={selectedPresetRubric}
                         onChange={handlePresetRubricChange}
-                        className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-navy-blue text-white"
+                        disabled={isRubricLocked}
+                        className={`w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 focus:border-navy-blue text-white ${isRubricLocked ? 'cursor-not-allowed' : ''}`}
                       >
-                        <option value="">None (Custom Rubric)</option>
+                        <option value="">None (Use Custom/Uploaded Rubric)</option>
                         {presetRubrics.map(rubric => (
                           <option key={rubric.id} value={rubric.id}>{rubric.name}</option>
                         ))}
                       </select>
                       {selectedPresetRubric && (
                         <p className="mt-2 text-sm text-navy-blue">
-                          Using preset: {presetRubrics.find(r => r.id === selectedPresetRubric)?.name}
+                          Using preset: {presetRubrics.find(r => r.id === selectedPresetRubric)?.name} {isRubricLocked ? '(Locked)' : ''}
                         </p>
                       )}
                     </div>
-                    
-                    <div className="border-t border-gray-700 pt-4">
+                    <div className={`border-t border-gray-700 pt-4 transition-opacity duration-300 ${isRubricLocked ? 'opacity-60' : 'opacity-100'}`}>
                       <label className="block text-gray-300 mb-2">Upload Rubric File</label>
                       <div className="flex items-center space-x-2">
                         <input
                           type="file"
+                          id="rubric-file-input"
                           onChange={handleRubricUpload}
+                          disabled={isRubricLocked}
                           accept=".pdf,.txt"
-                          className="w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 text-white"
+                          className={`w-full p-2 rounded-lg bg-gray-900/50 border border-gray-700 text-white file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-navy-blue/20 file:text-navy-blue hover:file:bg-navy-blue/30 ${isRubricLocked ? 'cursor-not-allowed' : ''}`}
                         />
                         <div className="flex space-x-1">
                           <span className="px-2 py-1 bg-gray-700 rounded text-xs text-white">PDF</span>
                           <span className="px-2 py-1 bg-gray-700 rounded text-xs text-white">TXT</span>
                         </div>
                       </div>
-                      {rubricFile && <p className="mt-2 text-gray-300">Selected: {rubricFile.name}</p>}
+                      {rubricFile && <p className="mt-2 text-gray-300">Selected: {rubricFile.name} {isRubricLocked ? '(Locked)' : ''}</p>}
                     </div>
-                    
-                    <div>
+                    <div className={`transition-opacity duration-300 ${isRubricLocked ? 'opacity-60' : 'opacity-100'}`}>
                       <div className="flex justify-between items-center mb-2">
-                        <label className="block text-gray-300">Rubric Content</label>
-                        {rubricText && (
+                        <label className="block text-gray-300">Or Paste Custom Rubric Content</label>
+                        {rubricText && !isRubricLocked && (
                           <motion.button
                             onClick={() => {
-                              setRubricText('');
-                              setRubricFile(null);
-                              setSelectedPresetRubric('');
+                              if (!isRubricLocked) {
+                                setRubricText('');
+                                setRubricFile(null);
+                                setSelectedPresetRubric('');
+                                const fileInput = document.getElementById('rubric-file-input');
+                                if (fileInput) fileInput.value = null;
+                              }
                             }}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -1444,19 +1030,24 @@ const EssayEvaluator = () => {
                       </div>
                       <textarea
                         value={rubricText}
+                        disabled={isRubricLocked}
                         onChange={(e) => {
-                          setRubricText(e.target.value);
-                          // If user manually edits the text, clear the preset selection
-                          if (selectedPresetRubric) {
-                            const preset = presetRubrics.find(r => r.id === selectedPresetRubric);
-                            if (preset && e.target.value !== preset.content) {
-                              setSelectedPresetRubric('');
-                            }
+                          if (!isRubricLocked) {
+                            setRubricText(e.target.value);
+                            setSelectedPresetRubric('');
+                            setRubricFile(null);
+                            const fileInput = document.getElementById('rubric-file-input');
+                            if (fileInput) fileInput.value = null;
                           }
                         }}
-                        className="w-full h-64 p-4 rounded-xl bg-gray-900/50 border border-gray-700 focus:border-navy-blue focus:ring-2 focus:ring-navy-blue/50 transition-all duration-300 resize-none text-white"
-                        placeholder="Paste your rubric here, upload a file above, or select a preset..."
+                        className={`w-full h-64 p-4 rounded-xl bg-gray-900/50 border border-gray-700 focus:border-navy-blue focus:ring-2 focus:ring-navy-blue/50 transition-all duration-300 resize-none text-white ${isRubricLocked ? 'cursor-not-allowed' : ''}`}
+                        placeholder={isRubricLocked ? "Rubric is locked. Unlock to edit." : "Paste your rubric here, upload a file above, or select a preset..."}
                       />
+                      {isRubricLocked && (rubricFile || selectedPresetRubric || rubricText) && (
+                        <p className="mt-2 text-sm text-green-400">
+                          Current rubric selection is locked for evaluation.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </FloatingCard>
@@ -1479,27 +1070,16 @@ const EssayEvaluator = () => {
                 <>
                   <motion.div 
                     initial={{ width: "5%" }}
-                    animate={{ 
-                      width: `${batchProgress || 5}%`,
-                      transition: { duration: 0.6, ease: "easeInOut" }
-                    }}
+                    animate={{ width: `${batchProgress || 5}%`, transition: { duration: 0.6, ease: "easeInOut" } }}
                     className="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-blue-500 to-navy-blue rounded-r-full z-10"
                   />
                   <motion.div 
-                    animate={{ 
-                      opacity: [0.6, 0.8, 0.6],
-                    }}
-                    transition={{ 
-                      repeat: Infinity, 
-                      duration: 1.5,
-                      ease: "easeInOut" 
-                    }}
+                    animate={{ opacity: [0.6, 0.8, 0.6] }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
                     className="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-blue-400/40 to-blue-600/40 rounded-full"
                     style={{ width: `${Math.min(100, batchProgress + 5 || 10)}%` }}
                   />
-                  <motion.div
-                    className="absolute bottom-0 left-0 h-1.5 w-full bg-gray-800/50"
-                  />
+                  <motion.div className="absolute bottom-0 left-0 h-1.5 w-full bg-gray-800/50" />
                 </>
               )}
               <span className="flex items-center justify-center gap-2">
@@ -1526,7 +1106,6 @@ const EssayEvaluator = () => {
               {error}
             </motion.div>
           )}
-          {/* Results section with count indicator */}
           <AnimatePresence>
             {results.length > 0 && (
               <motion.div
@@ -1552,7 +1131,7 @@ const EssayEvaluator = () => {
                         <ResultItem
                           key={result.id}
                           result={result}
-                          onDownload={() => handleDownload(result.url, result.filename, result)}
+                          onDownload={() => handleDownload(result)}
                           onRemove={() => handleRemoveResult(result.id)}
                         />
                       ))}
@@ -1587,4 +1166,4 @@ const EssayEvaluator = () => {
   );
 };
 
-export default EssayEvaluator; 
+export default EssayEvaluator;
