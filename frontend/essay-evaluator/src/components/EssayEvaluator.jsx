@@ -262,7 +262,7 @@ const EssayEvaluator = () => {
         formData.append('include_mini_lessons', includeMiniLessons);
         formData.append('essay', activeTab === 'upload' ? fileOrText : new Blob([fileOrText], { type: 'text/plain' }), filename);
 
-        const response = await fetch(`${baseUrl}/evaluate/`, { method: 'POST', body: formData });
+        const response = await fetch(`${baseUrl}/evaluate`, { method: 'POST', body: formData });
         if (!response.ok) throw new Error((await response.json()).detail || 'Evaluation failed');
         const data = await response.json();
 
