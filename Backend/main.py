@@ -40,7 +40,7 @@ os.makedirs("rubrics", exist_ok=True)
 app = FastAPI()
 
 # Get allowed origins from environment or use defaults
-allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,https://essay-evaluator-mu.vercel.app")
 origins = [origin.strip() for origin in allowed_origins.split(",") if origin.strip()]
 
 # Configure CORS
