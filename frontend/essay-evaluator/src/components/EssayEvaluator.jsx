@@ -251,7 +251,7 @@ const EssayEvaluator = () => {
       if (activeTab === 'upload' && files.length === 0) throw new Error('Please upload at least one essay file.');
       if (activeTab === 'paste' && !essayText.trim()) throw new Error('Please enter your essay text.');
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+       const baseUrl =  'https://essay-eval-09-production.up.railway.app'|| 'http://localhost:8000'; // import.meta.env.VITE_API_URL
       const processFile = async (fileOrText, filename) => {
         const formData = new FormData();
         if (rubricFile) formData.append('rubric_file', rubricFile);
@@ -262,7 +262,7 @@ const EssayEvaluator = () => {
         formData.append('include_mini_lessons', includeMiniLessons);
         formData.append('essay', activeTab === 'upload' ? fileOrText : new Blob([fileOrText], { type: 'text/plain' }), filename);
 
-        const response = await fetch(`${baseUrl}/evaluate`, { method: 'POST', body: formData });
+        const response = await fetch(`${baseUrl}/evaluate/`, { method: 'POST', body: formData });
         if (!response.ok) throw new Error((await response.json()).detail || 'Evaluation failed');
         const data = await response.json();
 
