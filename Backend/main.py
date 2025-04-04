@@ -1146,11 +1146,11 @@ async def list_rubrics():
 if __name__ == "__main__":
     import uvicorn
     # Fetch host/port from environment variables or use defaults
-    host = os.getenv("HOST", "127.0.0.1")
-    port = int(os.getenv("PORT", "8000"))
-    reload = os.getenv("RELOAD", "true").lower() == "true" # Control reload via env var
+    host = os.getenv("HOST", "0.0.0.0")  # Changed default to "0.0.0.0"
+    port = int(os.getenv("PORT", "8000"))  # Use $PORT if available, else 8000
+    reload = os.getenv("RELOAD", "false").lower() == "true"  # Disable reload by default for production
 
     print(f"Starting server on {host}:{port} (Reload: {reload})")
     print(f"Allowed Origins: {origins if origins else '*'}")
 
-    uvicorn.run("main:app", host=host, port=port, reload=reload) # Reference the script as 'main'
+    uvicorn.run("main:app", host=host, port=port, reload=reload)
