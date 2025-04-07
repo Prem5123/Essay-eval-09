@@ -395,13 +395,12 @@ async def evaluate_essay(essay_text: str, rubric_text: Optional[str], api_key: s
     # --- Construct the Prompt ---
     # Dynamically create the criteria JSON structure string based on parsed rubric
     criteria_json_string = ",\n".join([
-        f'  {{"name": "{name}", "score": number (0-{max_score}), "max_score": {max_score}, "feedback": "Specific feedback for {name}. Include a Mini-Lesson: [Actionable Tip/Concept]"}}'
+        f'  {{"name": "{name}", "score": number (0-{max_score}), "max_score": {max_score}, "feedback": "Specific feedback for {name}."}}'
         for name, max_score in zip(criteria_names, criteria_max_scores)
     ]) if criteria_names else ""
 
-    # Updated Prompt for Gemini 1.5 Flash with clearer instructions
     prompt = f"""
-Analyze the following student essay based *strictly* on the provided rubric criteria.
+Analyze the following student essay based *strictly* on the provided rubric criteria. Ignore the url that is being included in the essay
 
 **RUBRIC:**
 {rubric}
@@ -424,7 +423,6 @@ Provide a detailed evaluation in JSON format. Follow the structure below precise
     {criteria_json_string}
     // Ensure score is within the max_score for each criterion.
     // Feedback must be specific to the essay content for that criterion.
-    // Feedback *must* end with a distinct "Mini-Lesson: [Actionable Tip/Concept]".
   ],
   "suggestions": [
     "Provide 2-3 specific, actionable suggestions for overall improvement based on the evaluation.",
@@ -432,7 +430,7 @@ Provide a detailed evaluation in JSON format. Follow the structure below precise
     "Suggestion 3 (optional)"
   ],
   "highlighted_passages": [
-    // Identify 2-3 specific sentences or short passages from the essay illustrating key issues.
+    // Identify 4-5 specific sentences or short passages from the essay illustrating key issues.
     // If no major issues, highlight strengths.
     {{
       "text": "Exact short text snippet from the essay...",
@@ -440,14 +438,17 @@ Provide a detailed evaluation in JSON format. Follow the structure below precise
       "suggestion": "How to improve this specific text.",
       "example_revision": "Optional: Show a revised version of the text."
     }},
-    // Add 1 or 2 more highlights following the same structure.
+    // Add 2 or 3 more highlights following the same structure.
   ],
   "Mini Lessons": [
-      // Extract *only* the "Mini-Lesson: [Actionable Tip/Concept]" parts from the criteria feedback above.
-      // List them here concisely. Example:
-      "Mini-Lesson: Use transition words like 'however' or 'furthermore' to improve flow between paragraphs.",
-      "Mini-Lesson: Ensure each body paragraph directly supports the main thesis statement."
-      // Add all mini-lessons extracted from feedback.
+      // Add "Mini Lessons" based on the evaluation.
+      // These are specific actionable tips or concepts to improve the student's writing.
+      // Each lesson should contain detailed explaination (more than 50 words) and relevant to the essay.
+      //quote teext if necessary
+      // Use clear, simple language and avoid jargon.
+      // Explain with a metaphoer or analogy to make it relatable.
+
+      
   ]
 }}
 
@@ -466,16 +467,17 @@ Provide a detailed evaluation in JSON format. Follow the structure below precise
 
     # Configure safety settings to be less restrictive if needed, balancing safety and usability
     safety_settings = {
-        # genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-        # genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: genai.types.HarmBlockThreshold.BLOCK_NONE,
-        # genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-        # genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: genai.types.HarmBlockThreshold.BLOCK_NONE,
+        genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
+        genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: genai.types.HarmBlockThreshold.BLOCK_NONE,
+        genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
+        genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: genai.types.HarmBlockThreshold.BLOCK_NONE,
         # Adjust thresholds as necessary: BLOCK_ONLY_HIGH, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, BLOCK_NONE
     }
 
     generation_config = genai.types.GenerationConfig(
          # response_mime_type="application/json", # Request JSON directly if model supports
-         temperature=0.5 # Adjust temperature for creativity vs consistency
+         temperature=0 # Adjust temperature for creativity vs consistency
+    
     )
 
 
@@ -773,7 +775,7 @@ class PDFReport:
             table_data = [[
                 Paragraph("Criterion", self.styles['TableHeader']),
                 Paragraph("Score", self.styles['TableHeader']),
-                Paragraph("Feedback & Mini-Lesson", self.styles['TableHeader'])
+                Paragraph("Feedback", self.styles['TableHeader'])
             ]]
             for crit in criteria:
                 if not isinstance(crit, dict): continue

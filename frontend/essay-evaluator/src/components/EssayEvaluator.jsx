@@ -251,7 +251,7 @@ const EssayEvaluator = () => {
       if (activeTab === 'upload' && files.length === 0) throw new Error('Please upload at least one essay file.');
       if (activeTab === 'paste' && !essayText.trim()) throw new Error('Please enter your essay text.');
 
-       const baseUrl =  'https://essay-eval-09-production.up.railway.app'|| 'http://localhost:8000'; // import.meta.env.VITE_API_URL
+       const baseUrl =  'http://localhost:8000'; // import.meta.env.VITE_API_URL
       const processFile = async (fileOrText, filename) => {
         const formData = new FormData();
         if (rubricFile) formData.append('rubric_file', rubricFile);
