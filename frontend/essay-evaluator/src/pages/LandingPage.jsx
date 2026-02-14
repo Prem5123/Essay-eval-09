@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import {
   Upload, FileText, Sparkles, Zap, Shield, BarChart3,
   ArrowRight, CheckCircle, ChevronRight, Gift, Heart
 } from 'lucide-react';
-import AnimatedBackground from '../components/AnimatedBackground';
 
 // ═══════════════════════════════════════════════
 // ANIMATION VARIANTS
@@ -173,7 +172,7 @@ const AnimatedCounter = ({ target, suffix = '', prefix = '', duration = 2 }) => 
 // PARALLAX WRAPPER
 // ═══════════════════════════════════════════════
 
-const ParallaxLayer = ({ children, speed = 0.5, className = '' }) => {
+const ParallaxLayer = memo(({ children, speed = 0.5, className = '' }) => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -186,7 +185,7 @@ const ParallaxLayer = ({ children, speed = 0.5, className = '' }) => {
       {children}
     </motion.div>
   );
-};
+});
 
 // ═══════════════════════════════════════════════
 // TILT CARD — 3D perspective card with shine highlight
@@ -546,7 +545,6 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen overflow-hidden" style={{ background: 'var(--bg-deep)' }}>
-      <AnimatedBackground intensity="normal" />
 
       {/* ═══ HERO ═══ */}
       <motion.section
@@ -666,12 +664,12 @@ const LandingPage = () => {
       </motion.section>
 
       {/* ═══ STATS ═══ */}
-      <section className="relative py-20 px-4">
+      <section className="relative py-20 px-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 200px' }}>
         <StatsRow />
       </section>
 
       {/* ═══ FEATURES — Tilt Cards + Icon Animations ═══ */}
-      <section className="relative py-32 px-4">
+      <section className="relative py-32 px-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 600px' }}>
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial="hidden"
@@ -716,7 +714,7 @@ const LandingPage = () => {
       </section>
 
       {/* ═══ HOW IT WORKS ═══ */}
-      <section className="relative py-32 px-4">
+      <section className="relative py-32 px-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 400px' }}>
         <div className="max-w-5xl mx-auto">
           <motion.div
             initial="hidden"
@@ -760,7 +758,7 @@ const LandingPage = () => {
       <PricingSection />
 
       {/* ═══ CTA ═══ */}
-      <section className="relative py-32 px-4">
+      <section className="relative py-32 px-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 400px' }}>
         <div className="max-w-3xl mx-auto">
           <ParallaxLayer speed={0.12}>
             <motion.div

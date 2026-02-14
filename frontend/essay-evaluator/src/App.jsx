@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import './App.css';
 import Navbar from './components/Navbar';
+import AnimatedBackground from './components/AnimatedBackground';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -40,8 +41,9 @@ const App = () => {
 
   return (
     <>
+      <AnimatedBackground intensity="normal" />
       <Navbar />
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<PageTransition><LandingPage /></PageTransition>} />
           <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
