@@ -1,0 +1,251 @@
+/* ═══════════════════════════════════════════════
+   ANIMATED BACKGROUND — Pure CSS
+   ═══════════════════════════════════════════════ */
+
+.bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.bg-layer--subtle {
+    opacity: 0.45;
+}
+
+/* ─── Mesh Gradient Base ─── */
+.bg-mesh {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 80% at 80% 60%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 40% at 50% 90%, rgba(79, 70, 229, 0.06) 0%, transparent 50%);
+}
+
+/* ─── Floating Orbs ─── */
+.bg-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    will-change: transform;
+}
+
+.bg-orb--1 {
+    width: 600px;
+    height: 600px;
+    top: -10%;
+    left: -5%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+    animation: orb-drift-1 20s ease-in-out infinite;
+}
+
+.bg-orb--2 {
+    width: 500px;
+    height: 500px;
+    top: 30%;
+    right: -10%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.14) 0%, transparent 70%);
+    animation: orb-drift-2 25s ease-in-out infinite;
+}
+
+.bg-orb--3 {
+    width: 400px;
+    height: 400px;
+    bottom: -5%;
+    left: 30%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    animation: orb-drift-3 18s ease-in-out infinite;
+}
+
+.bg-orb--4 {
+    width: 300px;
+    height: 300px;
+    top: 60%;
+    left: 10%;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+    animation: orb-drift-4 22s ease-in-out infinite;
+}
+
+/* ─── Aurora Streaks ─── */
+.bg-aurora {
+    position: absolute;
+    width: 150%;
+    height: 200px;
+    top: 15%;
+    left: -25%;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(99, 102, 241, 0.04) 20%,
+            rgba(139, 92, 246, 0.06) 40%,
+            rgba(99, 102, 241, 0.04) 60%,
+            rgba(168, 85, 247, 0.03) 80%,
+            transparent 100%);
+    filter: blur(40px);
+    transform: rotate(-5deg);
+    animation: aurora-shift 15s ease-in-out infinite;
+}
+
+.bg-aurora--2 {
+    top: 55%;
+    height: 160px;
+    transform: rotate(3deg);
+    animation: aurora-shift-2 18s ease-in-out infinite;
+    opacity: 0.7;
+}
+
+/* ─── Film Grain ─── */
+.bg-grain {
+    position: absolute;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    opacity: 0.4;
+    animation: grain-drift 8s steps(10) infinite;
+}
+
+/* ═══════════════════════════════════════════════
+   KEYFRAMES
+   ═══════════════════════════════════════════════ */
+
+@keyframes orb-drift-1 {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    25% {
+        transform: translate(60px, 40px) scale(1.05);
+    }
+
+    50% {
+        transform: translate(30px, 80px) scale(0.95);
+    }
+
+    75% {
+        transform: translate(-20px, 30px) scale(1.02);
+    }
+}
+
+@keyframes orb-drift-2 {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    25% {
+        transform: translate(-50px, 30px) scale(1.08);
+    }
+
+    50% {
+        transform: translate(-80px, -20px) scale(0.92);
+    }
+
+    75% {
+        transform: translate(-30px, -50px) scale(1.04);
+    }
+}
+
+@keyframes orb-drift-3 {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(40px, -40px) scale(1.06);
+    }
+
+    66% {
+        transform: translate(-30px, -20px) scale(0.96);
+    }
+}
+
+@keyframes orb-drift-4 {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(50px, -30px);
+    }
+}
+
+@keyframes aurora-shift {
+
+    0%,
+    100% {
+        transform: rotate(-5deg) translateX(0);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: rotate(-3deg) translateX(5%);
+        opacity: 1;
+    }
+}
+
+@keyframes aurora-shift-2 {
+
+    0%,
+    100% {
+        transform: rotate(3deg) translateX(0);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: rotate(5deg) translateX(-4%);
+        opacity: 0.8;
+    }
+}
+
+@keyframes grain-drift {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    10% {
+        transform: translate(-2%, -3%);
+    }
+
+    20% {
+        transform: translate(3%, 1%);
+    }
+
+    30% {
+        transform: translate(-1%, 4%);
+    }
+
+    40% {
+        transform: translate(4%, -2%);
+    }
+
+    50% {
+        transform: translate(-3%, 2%);
+    }
+
+    60% {
+        transform: translate(1%, -4%);
+    }
+
+    70% {
+        transform: translate(-4%, 3%);
+    }
+
+    80% {
+        transform: translate(2%, -1%);
+    }
+
+    90% {
+        transform: translate(-2%, 4%);
+    }
+}

@@ -1,93 +1,68 @@
-// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 export default {
-    content: [
-      "./index.html",
-      "./src/**/*.{js,ts,jsx,tsx}",
-    ],
-    theme: {
-      extend: {
-        fontFamily: {
-          sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      colors: {
+        surface: {
+          deep: '#08080d',
+          base: '#0e0e16',
+          elevated: '#151520',
+          card: 'rgba(18, 18, 30, 0.6)',
         },
-        animation: {
-          blob: "blob 7s infinite",
-          blink: "blink 1s step-end infinite",
-          "fade-in": "fadeIn 1.5s ease-in-out",
-          "slide-up": "slideUp 0.8s ease-out",
+        accent: {
+          DEFAULT: '#6366f1',
+          light: '#818cf8',
+          dark: '#4f46e5',
+          glow: 'rgba(99, 102, 241, 0.15)',
         },
-        keyframes: {
-          blob: {
-            "0%": {
-              transform: "translate(0px, 0px) scale(1)",
-            },
-            "33%": {
-              transform: "translate(30px, -50px) scale(1.1)",
-            },
-            "66%": {
-              transform: "translate(-20px, 20px) scale(0.9)",
-            },
-            "100%": {
-              transform: "translate(0px, 0px) scale(1)",
-            },
-          },
-          blink: {
-            "0%, 100%": { opacity: 1 },
-            "50%": { opacity: 0 },
-          },
-          fadeIn: {
-            "0%": { opacity: 0 },
-            "100%": { opacity: 1 },
-          },
-          slideUp: {
-            "0%": { transform: "translateY(20px)", opacity: 0 },
-            "100%": { transform: "translateY(0)", opacity: 1 },
-          },
-        },
-        colors: {
-          'navy-blue': '#1a365d',
-          'navy-blue-light': '#2a4a7f',
-          primary: {
-            50: '#EFF6FF', 
-            100: '#DBEAFE', 
-            200: '#BFDBFE', 
-            300: '#93C5FD', 
-            400: '#60A5FA', 
-            500: '#3B82F6', 
-            600: '#2563EB', 
-            700: '#1D4ED8', 
-            800: '#1E40AF', 
-            900: '#1E3A8A',
-            950: '#172554',
-          },
-          secondary: {
-            50: '#F0FDFA',
-            100: '#CCFBF1',
-            200: '#99F6E4',
-            300: '#5EEAD4',
-            400: '#2DD4BF',
-            500: '#14B8A6',
-            600: '#0D9488',
-            700: '#0F766E',
-            800: '#115E59',
-            900: '#134E4A',
-            950: '#042F2E',
-          },
-          navy: {
-            50: '#E6EBF4',
-            100: '#CCDAE9',
-            200: '#99B4D3',
-            300: '#668FBD',
-            400: '#3369A6',
-            500: '#0C2340',  // Main navy color
-            600: '#091C33',
-            700: '#071526',
-            800: '#040E19',
-            900: '#02070C',
-            950: '#010306',
-          },
+        txt: {
+          primary: '#f0f0f5',
+          secondary: '#8b8b9e',
+          tertiary: '#55556a',
         },
       },
+      animation: {
+        'float': 'float 6s ease-in-out infinite',
+        'shimmer': 'shimmer 2s linear infinite',
+        'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
+        'gradient-shift': 'gradient-shift 8s ease infinite',
+        'blink': 'blink 1s step-end infinite',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-12px)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { opacity: '0.4' },
+          '50%': { opacity: '0.8' },
+        },
+        'gradient-shift': {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
+        },
+        blink: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0' },
+        },
+      },
+      borderRadius: {
+        '2xl': '16px',
+        '3xl': '24px',
+      },
     },
-    plugins: [],
-  }
+  },
+  plugins: [],
+}

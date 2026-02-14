@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/Users/prem/Documents/c++ exp/essay-evaluator/venv/bin/python" "$0" "$@"
-' '''
+#!/Users/prem/Documents/essay-evaluator-exp-01/venv/bin/python3.13
 # -*- coding: utf-8 -*-
 import re
 import sys

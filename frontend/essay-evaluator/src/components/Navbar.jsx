@@ -1,233 +1,227 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, X, LogOut, User } from 'lucide-react';
 import logoSvg from '../assets/images/Litmark.png';
 
+const NavLink = ({ to, children, isActive, onClick }) => (
+  <Link
+    to={to}
+    onClick={onClick}
+    className="relative px-4 py-2 text-sm font-medium transition-colors duration-200"
+    style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+  >
+    {children}
+    {isActive && (
+      <motion.div
+        layoutId="nav-indicator"
+        className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full"
+        style={{ background: 'var(--accent)' }}
+        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+      />
+    )}
+  </Link>
+);
+
 const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const { currentUser, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [scrolled, setScrolled] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Handle scroll effect
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  // Close mobile menu when route changes
-  useEffect(() => {
-    setIsOpen(false);
-  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
       await logout();
-    } catch (error) {
-      console.error('Failed to log out', error);
+      navigate('/');
+    } catch (err) {
+      console.error('Logout failed:', err);
     }
   };
 
   return (
-    <nav 
-      className={`fixed w-full z-50 transition-all duration-300 ${
-        scrolled 
-          ? 'bg-black/95 backdrop-blur-md shadow-md border-b border-[#0C2340]/50' 
+    <motion.nav
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ type: 'spring', stiffness: 200, damping: 30 }}
+      className={`fixed w-full z-50 transition-all duration-500 ${scrolled
+          ? 'glass-strong shadow-glow'
           : 'bg-transparent'
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center">
-              <img src={logoSvg} alt="LitMark Logo" className="h-12 w-auto" />
-            </Link>
+          {/* Logo */}
+          <Link
+            to="/"
+            className="flex-shrink-0 group flex items-center gap-2"
+          >
+            <motion.img
+              src={logoSvg}
+              alt="LitMark"
+              className="h-8 md:h-9 w-auto"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            />
+          </Link>
+
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-1">
+            <NavLink to="/" isActive={location.pathname === '/'}>
+              Home
+            </NavLink>
+            {currentUser && (
+              <NavLink to="/app" isActive={location.pathname === '/app'}>
+                Dashboard
+              </NavLink>
+            )}
           </div>
-          
-          {/* Desktop menu */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-center space-x-4">
+
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center gap-3">
+            {currentUser ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass text-sm">
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                    style={{ background: 'var(--accent)', color: 'white' }}
+                  >
+                    {currentUser.displayName
+                      ? currentUser.displayName.charAt(0).toUpperCase()
+                      : 'U'}
+                  </div>
+                  <span style={{ color: 'var(--text-secondary)' }} className="text-sm font-medium">
+                    {currentUser.displayName || 'User'}
+                  </span>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  <LogOut size={14} />
+                  Logout
+                </motion.button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Sign in
+                </Link>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    to="/signup"
+                    className="px-5 py-2 rounded-full text-sm font-semibold text-white transition-all duration-200"
+                    style={{ background: 'var(--accent)' }}
+                  >
+                    Get Started
+                  </Link>
+                </motion.div>
+              </>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden p-2 rounded-lg"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {isOpen ? <X size={22} /> : <Menu size={22} />}
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="md:hidden glass-strong border-t"
+            style={{ borderColor: 'var(--border-subtle)' }}
+          >
+            <div className="px-4 py-4 space-y-2">
               <Link
                 to="/"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  location.pathname === '/' 
-                    ? 'text-white bg-[#0C2340]' 
-                    : 'text-gray-300 hover:text-white hover:bg-[#0C2340]/20'
-                } transition-colors duration-300`}
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+                style={{
+                  color: location.pathname === '/' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: location.pathname === '/' ? 'var(--accent-glow)' : 'transparent',
+                }}
               >
                 Home
               </Link>
-              
-              {currentUser ? (
-                <>
-                  <Link
-                    to="/app"
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      location.pathname === '/app' 
-                        ? 'text-white bg-[#0C2340]' 
-                        : 'text-gray-300 hover:text-white hover:bg-[#0C2340]/20'
-                    } transition-colors duration-300`}
-                  >
-                    Dashboard
-                  </Link>
-                  
+              {currentUser && (
+                <Link
+                  to="/app"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    color: location.pathname === '/app' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    background: location.pathname === '/app' ? 'var(--accent-glow)' : 'transparent',
+                  }}
+                >
+                  Dashboard
+                </Link>
+              )}
+              <div className="pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                {currentUser ? (
                   <button
-                    onClick={handleLogout}
-                    className="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-[#0C2340]/20 transition-colors duration-300"
+                    onClick={() => { handleLogout(); setIsOpen(false); }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium"
+                    style={{ color: 'var(--error)' }}
                   >
+                    <LogOut size={14} />
                     Logout
                   </button>
-                  
-                  <div className="flex items-center ml-3">
-                    <div className="bg-[#0C2340] p-0.5 rounded-full">
-                      <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-black text-white text-sm font-medium">
-                        {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
-                      </span>
-                    </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Link
+                      to="/login"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-4 py-2.5 rounded-lg text-sm font-medium text-center"
+                      style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-4 py-2.5 rounded-lg text-sm font-semibold text-white text-center"
+                      style={{ background: 'var(--accent)' }}
+                    >
+                      Get Started
+                    </Link>
                   </div>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-[#0C2340]/20 transition-colors duration-300"
-                  >
-                    Login
-                  </Link>
-                  
-                  <Link
-                    to="/signup"
-                    className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[#0C2340] hover:bg-[#0D2A4D] transition-colors duration-300"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-          
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-[#0C2340]/20 focus:outline-none"
-              aria-expanded="false"
-            >
-              <span className="sr-only">Open main menu</span>
-              {isOpen ? (
-                <svg
-                  className="block h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="block h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile menu */}
-      <div
-        className={`${
-          isOpen ? 'block' : 'hidden'
-        } md:hidden bg-black border-b border-[#0C2340]/50 transition-all duration-300`}
-      >
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-          <Link
-            to="/"
-            className={`block px-3 py-2 rounded-md text-base font-medium ${
-              location.pathname === '/' 
-                ? 'text-white bg-[#0C2340]' 
-                : 'text-gray-300 hover:text-white hover:bg-[#0C2340]/20'
-            } transition-colors duration-300`}
-          >
-            Home
-          </Link>
-          
-          {currentUser ? (
-            <>
-              <Link
-                to="/app"
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  location.pathname === '/app' 
-                    ? 'text-white bg-[#0C2340]' 
-                    : 'text-gray-300 hover:text-white hover:bg-[#0C2340]/20'
-                } transition-colors duration-300`}
-              >
-                Dashboard
-              </Link>
-              
-              <button
-                onClick={handleLogout}
-                className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-[#0C2340]/20 transition-colors duration-300"
-              >
-                Logout
-              </button>
-              
-              <div className="px-3 py-2 flex items-center">
-                <div className="bg-[#0C2340] p-0.5 rounded-full">
-                  <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-black text-white text-sm font-medium">
-                    {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
-                  </span>
-                </div>
-                <span className="ml-3 text-gray-300">{currentUser.name || currentUser.email}</span>
+                )}
               </div>
-            </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-[#0C2340]/20 transition-colors duration-300"
-              >
-                Login
-              </Link>
-              
-              <Link
-                to="/signup"
-                className="block px-3 py-2 rounded-md text-base font-medium text-white bg-[#0C2340] hover:bg-[#0D2A4D] transition-colors duration-300 mt-2"
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </nav>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.nav>
   );
 };
 
-export default Navbar; 
+export default Navbar;

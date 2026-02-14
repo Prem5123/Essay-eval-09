@@ -42,3 +42,8 @@ Backend/uploads/
 
 # Nested frontend directory
 frontend/essay-evaluator/frontend/
+
+# OS & dev artifacts
+.DS_Store
+*.pid
+backend.log

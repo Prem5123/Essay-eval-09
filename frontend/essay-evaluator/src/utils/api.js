@@ -26,7 +26,7 @@ export const evaluateEssay = async (formData) => {
 export const extractText = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   try {
     const response = await api.post('/extract_text/', formData);
     return response.data;
@@ -61,7 +61,7 @@ export const createRubric = async (content, name) => {
   const formData = new FormData();
   formData.append('content', content);
   if (name) formData.append('name', name);
-  
+
   try {
     const response = await api.post('/rubrics/', formData);
     return response.data;
@@ -75,7 +75,7 @@ export const updateRubric = async (id, content, name) => {
   const formData = new FormData();
   formData.append('content', content);
   if (name) formData.append('name', name);
-  
+
   try {
     const response = await api.put(`/rubrics/${id}`, formData);
     return response.data;
@@ -111,7 +111,7 @@ export const generateRubric = async (subject, level, criteriaCount, apiKey) => {
   formData.append('level', level);
   formData.append('criteria_count', criteriaCount);
   formData.append('api_key', apiKey);
-  
+
   try {
     const response = await api.post('/generate-rubric/', formData);
     return response.data;
@@ -124,7 +124,7 @@ export const generateRubric = async (subject, level, criteriaCount, apiKey) => {
 export const uploadRubricFile = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   try {
     const response = await api.post('/upload-rubric-file/', formData);
     return response.data;
@@ -137,7 +137,7 @@ export const uploadRubricFile = async (file) => {
 export const verifyApiKey = async (apiKey) => {
   const formData = new FormData();
   formData.append('api_key', apiKey);
-  
+
   try {
     const response = await api.post('/verify_api_key/', formData);
     return response.data;

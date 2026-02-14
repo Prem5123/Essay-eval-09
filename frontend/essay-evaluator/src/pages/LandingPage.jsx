@@ -1,311 +1,822 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import AOS from 'aos';
-import 'aos/dist/aos.css';
-import logoSvg from '../assets/images/logo.svg';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { motion, useInView, useScroll, useTransform } from 'framer-motion';
+import {
+  Upload, FileText, Sparkles, Zap, Shield, BarChart3,
+  ArrowRight, CheckCircle, ChevronRight, Gift, Heart
+} from 'lucide-react';
+import AnimatedBackground from '../components/AnimatedBackground';
 
-const LandingPage = () => {
-  const { currentUser, signInWithGoogle } = useAuth();
-  const navigate = useNavigate();
-  const [typedText, setTypedText] = useState('');
-  const [isTyping, setIsTyping] = useState(true);
-  const fullText = "AI based essay evaluator";
+// ═══════════════════════════════════════════════
+// ANIMATION VARIANTS
+// ═══════════════════════════════════════════════
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: (delay = 0) => ({
+    opacity: 1, y: 0,
+    transition: { duration: 0.7, delay, ease: [0.25, 0.46, 0.45, 0.94] }
+  }),
+};
+
+const stagger = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.12, delayChildren: 0.2 },
+  },
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: (delay = 0) => ({
+    opacity: 1, scale: 1,
+    transition: { duration: 0.5, delay, ease: 'easeOut' }
+  }),
+};
+
+// ═══════════════════════════════════════════════
+// TEXT REVEAL — Letters slide up with mask
+// ═══════════════════════════════════════════════
+
+const TextReveal = ({ children, className = '', delay = 0 }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-50px' });
+
+  // Split by words
+  const words = typeof children === 'string' ? children.split(' ') : [children];
+
+  return (
+    <span ref={ref} className={`inline-flex flex-wrap gap-x-[0.3em] ${className}`}>
+      {words.map((word, i) => (
+        <span key={i} className="text-reveal-line">
+          <motion.span
+            initial={{ y: '110%' }}
+            animate={isInView ? { y: '0%' } : { y: '110%' }}
+            transition={{
+              duration: 0.6,
+              delay: delay + i * 0.04,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          >
+            {word}
+          </motion.span>
+        </span>
+      ))}
+    </span>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// TYPEWRITER
+// ═══════════════════════════════════════════════
+
+const TypewriterText = ({ words, className }) => {
+  const [index, setIndex] = useState(0);
+  const [text, setText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    AOS.init({
-      duration: 800,
-      once: false,
-      mirror: true,
-      easing: 'ease-out-cubic',
-    });
+    const current = words[index];
+    const speed = isDeleting ? 40 : 80;
+
+    const timeout = setTimeout(() => {
+      if (!isDeleting && text === current) {
+        setTimeout(() => setIsDeleting(true), 2000);
+      } else if (isDeleting && text === '') {
+        setIsDeleting(false);
+        setIndex((prev) => (prev + 1) % words.length);
+      } else {
+        setText(isDeleting ? current.slice(0, text.length - 1) : current.slice(0, text.length + 1));
+      }
+    }, speed);
+    return () => clearTimeout(timeout);
+  }, [text, isDeleting, index, words]);
+
+  return (
+    <span className={className}>
+      {text}
+      <span className="animate-blink" style={{ color: 'var(--accent-light)' }}>|</span>
+    </span>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// MAGNETIC BUTTON — shifts toward cursor on hover
+// ═══════════════════════════════════════════════
+
+const MagneticButton = ({ children, className = '', strength = 0.3, ...props }) => {
+  const ref = useRef(null);
+
+  const handleMouseMove = useCallback((e) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    el.style.transform = `translate(${x * strength}px, ${y * strength}px)`;
+  }, [strength]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (ref.current) {
+      ref.current.style.transform = 'translate(0px, 0px)';
+    }
   }, []);
 
+  return (
+    <div
+      ref={ref}
+      className={`transition-transform duration-200 ease-out ${className}`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// ANIMATED COUNTER — counts up when scrolled into view
+// ═══════════════════════════════════════════════
+
+const AnimatedCounter = ({ target, suffix = '', prefix = '', duration = 2 }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+  const [count, setCount] = useState(0);
+
   useEffect(() => {
-    if (isTyping) {
-      if (typedText.length < fullText.length) {
-        const timeout = setTimeout(() => {
-          setTypedText(fullText.slice(0, typedText.length + 1));
-        }, 100);
-        return () => clearTimeout(timeout);
+    if (!isInView) return;
+    let start = 0;
+    const end = target;
+    const step = Math.ceil(end / (duration * 60)); // ~60fps
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
       } else {
-        const timeout = setTimeout(() => {
-          setIsTyping(false);
-        }, 1000);
-        return () => clearTimeout(timeout);
+        setCount(start);
       }
-    } else {
-      const timeout = setTimeout(() => {
-        setTypedText('');
-        setIsTyping(true);
-      }, 3000);
-      return () => clearTimeout(timeout);
+    }, 1000 / 60);
+    return () => clearInterval(timer);
+  }, [isInView, target, duration]);
+
+  return (
+    <span ref={ref} className="tabular-nums">
+      {prefix}{count}{suffix}
+    </span>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// PARALLAX WRAPPER
+// ═══════════════════════════════════════════════
+
+const ParallaxLayer = ({ children, speed = 0.5, className = '' }) => {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start end', 'end start'],
+  });
+  const y = useTransform(scrollYProgress, [0, 1], [speed * -60, speed * 60]);
+
+  return (
+    <motion.div ref={ref} style={{ y }} className={className}>
+      {children}
+    </motion.div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// TILT CARD — 3D perspective card with shine highlight
+// ═══════════════════════════════════════════════
+
+const TiltCard = ({ children, className = '' }) => {
+  const ref = useRef(null);
+
+  const handleMouseMove = useCallback((e) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    const rotateX = (y - 0.5) * -8;  // subtle tilt
+    const rotateY = (x - 0.5) * 8;
+    el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    // Update shine position
+    el.style.setProperty('--shine-x', `${x * 100}%`);
+    el.style.setProperty('--shine-y', `${y * 100}%`);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (ref.current) {
+      ref.current.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
     }
-  }, [typedText, isTyping]);
+  }, []);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-      navigate('/app');
-    } catch (error) {
-      console.error("Google sign-in error:", error);
-    }
-  };
+  return (
+    <div
+      ref={ref}
+      className={`tilt-card ${className}`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div className="tilt-card-inner relative">
+        <div className="tilt-card-shine" />
+        {children}
+      </div>
+    </div>
+  );
+};
 
-  const features = [
-    {
-      title: "AI-Powered Evaluation",
-      description: "Get detailed feedback on your essays using advanced AI technology.",
-      icon: "🤖",
-      color: "bg-[#0C2340]",
-      hoverColor: "hover:bg-[#0D2A4D]",
-    },
-    {
-      title: "Custom Rubrics",
-      description: "Create and save your own evaluation rubrics or use our pre-defined templates.",
-      icon: "📝",
-      color: "bg-[#0C2340]",
-      hoverColor: "hover:bg-[#0D2A4D]",
-    },
-    {
-      title: "Detailed PDF Reports",
-      description: "Receive comprehensive PDF reports with scores and improvement suggestions.",
-      icon: "📊",
-      color: "bg-[#0C2340]",
-      hoverColor: "hover:bg-[#0D2A4D]",
-    },
-    {
-      title: "Multiple File Formats",
-      description: "Upload essays in PDF, TXT, or DOCX formats for evaluation.",
-      icon: "📄",
-      color: "bg-[#0C2340]",
-      hoverColor: "hover:bg-[#0D2A4D]",
-    },
-  ];
+// ═══════════════════════════════════════════════
+// FEATURE CARD — Tilt + Icon Animation
+// ═══════════════════════════════════════════════
 
-  const testimonials = [
-    {
-      name: "Sarah Johnson",
-      role: "English Teacher",
-      content: "This tool has revolutionized how I grade essays. It saves me hours of work while providing consistent feedback to my students.",
-      avatar: "https://randomuser.me/api/portraits/women/32.jpg",
-    },
-    {
-      name: "Michael Chen",
-      role: "University Student",
-      content: "I've improved my writing significantly since using this tool. The detailed feedback helps me understand my weaknesses and work on them.",
-      avatar: "https://randomuser.me/api/portraits/men/46.jpg",
-    },
-    {
-      name: "Dr. Emily Rodriguez",
-      role: "Professor of Literature",
-      content: "The customizable rubrics are perfect for different types of assignments. My students appreciate the detailed feedback they receive.",
-      avatar: "https://randomuser.me/api/portraits/women/65.jpg",
-    },
+const iconAnimations = ['icon-animate-bounce', 'icon-animate-pulse', 'icon-animate-spin',
+  'icon-animate-bounce', 'icon-animate-pulse', 'icon-animate-spin'];
+
+const FeatureCard = ({ icon: Icon, title, description, delay, index }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-50px' });
+
+  return (
+    <motion.div
+      ref={ref}
+      custom={delay}
+      initial="hidden"
+      animate={isInView ? 'visible' : 'hidden'}
+      variants={scaleIn}
+    >
+      <TiltCard
+        className="group glass glow-border rounded-2xl p-6 md:p-8 transition-colors duration-500 hover:bg-[var(--bg-elevated)] h-full"
+      >
+        <div className="relative">
+          <div
+            className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-all duration-300 group-hover:scale-110 ${iconAnimations[index] || 'icon-animate-bounce'}`}
+            style={{ background: 'var(--accent-glow)', color: 'var(--accent-light)' }}
+          >
+            <Icon size={22} strokeWidth={1.8} />
+          </div>
+          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+            {title}
+          </h3>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            {description}
+          </p>
+        </div>
+      </TiltCard>
+    </motion.div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// STEP CARD with counter
+// ═══════════════════════════════════════════════
+
+const StepCard = ({ number, title, description, delay }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-50px' });
+
+  return (
+    <motion.div
+      ref={ref}
+      custom={delay}
+      initial="hidden"
+      animate={isInView ? 'visible' : 'hidden'}
+      variants={fadeUp}
+      className="relative flex flex-col items-center text-center"
+    >
+      <div
+        className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold mb-5 glow-border"
+        style={{ background: 'var(--accent-glow)', color: 'var(--accent-light)' }}
+      >
+        {number}
+      </div>
+      <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+        {title}
+      </h3>
+      <p className="text-sm max-w-xs" style={{ color: 'var(--text-secondary)' }}>
+        {description}
+      </p>
+    </motion.div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// STATS ROW — Animated Counters
+// ═══════════════════════════════════════════════
+
+const StatsRow = () => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-60px' });
+
+  const stats = [
+    { target: 10, suffix: '+', label: 'File formats' },
+    { target: 0, prefix: '$', suffix: '', label: 'Cost, forever' },
+    { target: 30, suffix: 's', label: 'Avg. grading time' },
+    { target: 10, suffix: '', label: 'Files per batch' },
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden font-sans matte-canvas">
-      {/* Canvas grain effect */}
-      <div className="canvas-grain"></div>
-      
-      {/* Matte canvas effect overlay */}
-      <div className="absolute inset-0 z-0 bg-black opacity-90 pointer-events-none">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjMDAwIj48L3JlY3Q+CjxwYXRoIGQ9Ik0wIDVMNSAwWk02IDRMNCA2Wk0tMSAxTDEgLTFaIiBzdHJva2U9IiMyMjIiIHN0cm9rZS13aWR0aD0iMC41Ij48L3BhdGg+Cjwvc3ZnPg==')] opacity-10"></div>
-        <div className="absolute inset-0" style={{ backdropFilter: 'brightness(0.95) contrast(1.05)' }}></div>
-        <div className="matte-overlay"></div>
-      </div>
-
-      {/* Animated background - elegant, subtle, navy-based */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob"></div>
-        <div className="absolute top-1/3 -left-20 w-96 h-96 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-40 right-20 w-80 h-80 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-25 animate-blob animation-delay-4000"></div>
-        <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-[#0C2340] rounded-full mix-blend-screen filter blur-3xl opacity-25 animate-blob animation-delay-6000"></div>
-      </div>
-
-      {/* Hero Section - elegant and minimal */}
-      <header className="relative z-10 pt-28 pb-16 md:pt-36 md:pb-24">
-        <div className="container mx-auto px-4 text-center">
-          <div 
-            className="inline-block p-10 rounded-2xl mb-8"
-            data-aos="zoom-in"
-          >
-            <div className="flex flex-col items-center justify-center">
-              <h1 className="text-5xl md:text-7xl font-bold leading-tight tracking-tight">
-                <span className="text-white">
-                  LitMark
-                </span>
-              </h1>
-            </div>
-            <p className="text-xl md:text-3xl font-light mt-6 text-white h-10 flex items-center justify-center">
-              {typedText}
-              <span className={`inline-block w-0.5 h-8 ml-1 bg-white ${isTyping ? 'animate-blink' : ''}`}></span>
-            </p>
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6 }}
+      className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-3xl mx-auto"
+    >
+      {stats.map((stat, i) => (
+        <motion.div
+          key={stat.label}
+          initial={{ opacity: 0, y: 15 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: i * 0.1, duration: 0.5 }}
+          className="text-center"
+        >
+          <div className="text-3xl md:text-4xl font-extrabold text-gradient mb-1">
+            <AnimatedCounter
+              target={stat.target}
+              suffix={stat.suffix}
+              prefix={stat.prefix}
+              duration={1.5}
+            />
           </div>
-          <p 
-            className="text-lg md:text-xl max-w-2xl mx-auto mb-12 text-white leading-relaxed font-light"
-            data-aos="fade-up"
-            data-aos-delay="200"
-          >
-            Reduce your grading time and enhance feedback quality with our advanced AI evaluation system.
-          </p>
-          <div 
-            className="flex flex-col sm:flex-row justify-center gap-6"
-            data-aos="fade-up"
-            data-aos-delay="400"
-          >
-            {currentUser ? (
-              <Link 
-                to="/app" 
-                className="px-8 py-3 rounded-lg bg-[#0C2340] text-white font-medium text-lg hover:shadow-lg hover:shadow-[#0C2340]/40 transition-all duration-300 transform hover:-translate-y-1 hover:bg-[#0D2A4D]"
-              >
-                Go to Dashboard
-              </Link>
-            ) : (
-              <>
-                <Link 
-                  to="/login" 
-                  className="px-8 py-3 rounded-lg bg-[#0C2340] text-white font-medium text-lg hover:shadow-lg hover:shadow-[#0C2340]/40 transition-all duration-300 transform hover:-translate-y-1 hover:bg-[#0D2A4D]"
-                >
-                  Get Started
-                </Link>
-                <Link 
-                  to="/signup" 
-                  className="px-8 py-3 rounded-lg bg-transparent border border-[#0C2340] text-white font-medium text-lg hover:bg-[#0C2340]/20 transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
+          <div className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+            {stat.label}
           </div>
-        </div>
-      </header>
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+};
 
-      {/* Features Section - clean and sophisticated with black theme */}
-      <section className="relative z-10 py-20 md:py-28 bg-black/90">
-        <div className="container mx-auto px-4">
-          <h2 
-            className="text-2xl md:text-3xl font-bold text-center mb-20 text-white"
-            data-aos="fade-up"
-          >
-            Key Features
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <div 
-                key={index}
-                className="bg-black/80 rounded-xl p-8 border border-[#0C2340] transition-all duration-300 hover:shadow-xl hover:shadow-[#0C2340]/30 group hover:translate-y-[-8px]"
-                data-aos="fade-up"
-                data-aos-delay={100 * index}
-              >
-                <div className={`${feature.color} ${feature.hoverColor} w-16 h-16 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg`}>
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-medium mb-4 text-white group-hover:text-[#6E9CDE] transition-colors duration-300">{feature.title}</h3>
-                <p className="text-gray-300 group-hover:text-white transition-colors duration-300 font-light">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+// ═══════════════════════════════════════════════
+// PRICING SECTION — Rotating gradient border
+// ═══════════════════════════════════════════════
 
-      {/* Testimonials Section - refined and focused */}
-      <section className="relative z-10 py-20 md:py-28 bg-black">
-        <div className="container mx-auto px-4">
-          <h2 
-            className="text-2xl md:text-3xl font-bold text-center mb-16 text-white"
-            data-aos="fade-up"
+const PricingSection = () => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-80px' });
+
+  const freeFeatures = [
+    'Unlimited essay evaluations',
+    'All rubric presets included',
+    'PDF report downloads',
+    'Batch processing (up to 10 files)',
+    'Custom rubric support',
+    'Detailed score breakdowns',
+    'No credit card required',
+    'No usage limits, ever',
+  ];
+
+  return (
+    <section ref={ref} className="relative py-32 px-4">
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={stagger}
+          className="text-center mb-16"
+        >
+          <motion.p
+            variants={fadeUp}
+            className="text-sm font-semibold uppercase tracking-widest mb-3"
+            style={{ color: 'var(--accent)' }}
           >
-            What People Are Saying
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div 
-                key={index}
-                className="bg-black/90 rounded-xl p-8 border border-[#0C2340] hover:shadow-2xl transition-all duration-300 hover:translate-y-[-8px]"
-                data-aos="fade-up"
-                data-aos-delay={100 * index}
-              >
-                <div className="mb-6 relative">
-                  <svg className="absolute -top-4 -left-4 text-[#6E9CDE] w-8 h-8 opacity-80" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-                  </svg>
-                  <p className="text-white italic relative">{testimonial.content}</p>
-                </div>
-                <div className="flex items-center">
-                  <img src={testimonial.avatar} alt={testimonial.name} className="w-12 h-12 rounded-full mr-4" />
-                  <div>
-                    <h4 className="text-white font-medium">{testimonial.name}</h4>
-                    <p className="text-[#6E9CDE] text-sm">{testimonial.role}</p>
+            Pricing
+          </motion.p>
+          <motion.h2
+            variants={fadeUp}
+            className="text-3xl md:text-5xl font-bold mb-4"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <TextReveal delay={0.1}>100% Free.</TextReveal>{' '}
+            <span className="text-gradient"><TextReveal delay={0.3}>No catches.</TextReveal></span>
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            className="text-base max-w-xl mx-auto"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            We believe every educator deserves access to great tools. That's why LitMark is completely free — forever.
+          </motion.p>
+        </motion.div>
+
+        <ParallaxLayer speed={0.15}>
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.97 }}
+            animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ duration: 0.7, delay: 0.3 }}
+            className="relative max-w-lg mx-auto"
+          >
+            {/* Glow behind card */}
+            <div
+              className="absolute -inset-4 rounded-3xl opacity-40 blur-2xl"
+              style={{ background: 'radial-gradient(ellipse at center, var(--accent-glow-strong) 0%, transparent 70%)' }}
+            />
+
+            {/* Rotating gradient border card */}
+            <div className="relative glass rotating-border rounded-3xl p-8 md:p-10 overflow-hidden">
+              {/* Header */}
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <div
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+                    style={{ background: 'rgba(52, 211, 153, 0.12)', color: 'var(--success)' }}
+                  >
+                    <Gift size={12} />
+                    Forever Free
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl md:text-6xl font-extrabold text-gradient">$0</span>
+                    <span className="text-lg" style={{ color: 'var(--text-tertiary)' }}>/forever</span>
                   </div>
                 </div>
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <Heart size={32} className="animate-pulse-glow" style={{ color: 'var(--accent-light)' }} />
+                </motion.div>
+              </div>
+
+              <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>
+                Every feature. Every tool. No paywalls, no freemium tricks, no hidden limits.
+              </p>
+
+              <ul className="space-y-3 mb-8">
+                {freeFeatures.map((feature, i) => (
+                  <motion.li
+                    key={feature}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={isInView ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: 0.4 + i * 0.06 }}
+                    className="flex items-center gap-3 text-sm"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <CheckCircle size={16} style={{ color: 'var(--success)' }} className="flex-shrink-0" />
+                    {feature}
+                  </motion.li>
+                ))}
+              </ul>
+
+              <MagneticButton>
+                <Link
+                  to="/app"
+                  className="group flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-white font-semibold text-base transition-all duration-300"
+                  style={{
+                    background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
+                    boxShadow: '0 0 30px -5px rgba(99, 102, 241, 0.4)',
+                  }}
+                >
+                  Start Using for Free
+                  <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
+                </Link>
+              </MagneticButton>
+
+              {/* Bottom accent line */}
+              <div
+                className="absolute bottom-0 left-[10%] right-[10%] h-px"
+                style={{
+                  background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
+                }}
+              />
+            </div>
+          </motion.div>
+        </ParallaxLayer>
+      </div>
+    </section>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// MAIN LANDING PAGE
+// ═══════════════════════════════════════════════
+
+const LandingPage = () => {
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 80]);
+
+  const features = [
+    {
+      icon: Sparkles,
+      title: 'AI-Powered Grading',
+      description: 'Advanced AI analyzes essays against your rubric criteria with nuanced understanding of writing quality.',
+    },
+    {
+      icon: Zap,
+      title: 'Instant Results',
+      description: 'Grade entire batches of essays in seconds. Upload up to 10 files and get detailed feedback immediately.',
+    },
+    {
+      icon: Shield,
+      title: 'Consistent & Fair',
+      description: 'Eliminates grading bias with standardized evaluation. Every essay is assessed with the same rigorous criteria.',
+    },
+    {
+      icon: BarChart3,
+      title: 'Detailed Analytics',
+      description: 'Get comprehensive score breakdowns with specific feedback on each rubric dimension.',
+    },
+    {
+      icon: FileText,
+      title: 'Multiple Formats',
+      description: 'Supports TXT, DOC, DOCX, and PDF files. Paste text directly or upload files — your choice.',
+    },
+    {
+      icon: Upload,
+      title: 'Batch Processing',
+      description: 'Upload multiple essays at once and download individual or batch evaluation reports as PDFs.',
+    },
+  ];
+
+  const steps = [
+    { number: '01', title: 'Upload Essays', description: 'Drag and drop your essay files or paste text directly into the editor.' },
+    { number: '02', title: 'Set Your Rubric', description: 'Choose from presets or customize your own rubric with specific criteria and weights.' },
+    { number: '03', title: 'Get Results', description: 'Receive instant AI-generated evaluations with detailed scores and actionable feedback.' },
+  ];
+
+  return (
+    <div className="min-h-screen overflow-hidden" style={{ background: 'var(--bg-deep)' }}>
+      <AnimatedBackground intensity="normal" />
+
+      {/* ═══ HERO ═══ */}
+      <motion.section
+        ref={heroRef}
+        style={{ opacity: heroOpacity, scale: heroScale }}
+        className="relative min-h-screen flex items-center justify-center px-4"
+      >
+        <motion.div style={{ y: heroY }} className="max-w-4xl mx-auto text-center pt-20">
+          {/* Badge */}
+          <ParallaxLayer speed={-0.2}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-xs font-medium mb-8"
+              style={{ color: 'var(--accent-light)' }}
+            >
+              <Sparkles size={12} />
+              AI-Powered Essay Evaluation
+              <ChevronRight size={12} />
+            </motion.div>
+          </ParallaxLayer>
+
+          {/* Main Heading — Text Reveal */}
+          <ParallaxLayer speed={-0.1}>
+            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[0.95] mb-6">
+              <span className="text-gradient">
+                <TextReveal delay={0.3}>Grade smarter.</TextReveal>
+              </span>
+              <br />
+              <span style={{ color: 'var(--text-primary)' }}>
+                <TextReveal delay={0.5}>Not harder.</TextReveal>
+              </span>
+            </h1>
+          </ParallaxLayer>
+
+          {/* Subtitle with Typewriter */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7 }}
+            className="text-lg md:text-xl max-w-2xl mx-auto mb-10"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Professional essay evaluation for{' '}
+            <TypewriterText
+              words={['teachers', 'professors', 'students', 'institutions']}
+              className="font-semibold"
+            />
+          </motion.p>
+
+          {/* CTA Buttons — Magnetic */}
+          <ParallaxLayer speed={0.1}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.9 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            >
+              <MagneticButton strength={0.2}>
+                <Link
+                  to="/app"
+                  className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-white font-semibold text-base transition-all duration-300"
+                  style={{
+                    background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
+                    boxShadow: '0 0 30px -5px rgba(99, 102, 241, 0.4)',
+                  }}
+                >
+                  Start Evaluating
+                  <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
+                </Link>
+              </MagneticButton>
+              <MagneticButton strength={0.15}>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm font-medium transition-all duration-200 glass"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Sign In
+                </Link>
+              </MagneticButton>
+            </motion.div>
+          </ParallaxLayer>
+
+          {/* Trust indicators */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 1.2 }}
+            className="mt-16 flex items-center justify-center gap-6 flex-wrap"
+          >
+            {['Instant Grading', 'Multiple Rubrics', 'PDF Reports', '100% Free'].map((item) => (
+              <div key={item} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                <CheckCircle size={14} style={{ color: 'var(--accent)' }} />
+                {item}
               </div>
             ))}
-          </div>
-        </div>
-      </section>
+          </motion.div>
+        </motion.div>
 
-      {/* CTA Section - elegant with black theme */}
-      <section className="relative z-10 py-20 md:py-28">
-        <div 
-          className="container mx-auto px-4 text-center"
-          data-aos="zoom-in"
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
         >
-          <div className="max-w-3xl mx-auto bg-gradient-to-b from-black/90 to-black p-12 rounded-2xl border border-[#0C2340] shadow-2xl">
-            <h2 className="text-2xl md:text-3xl font-bold mb-6 text-white">
-              Ready to Save Time on Essay Marking?
-            </h2>
-            <p className="text-lg max-w-xl mx-auto mb-8 text-white font-light">
-              Join thousands of educators who are already using LitMark's AI-powered essay evaluation tool.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              {currentUser ? (
-                <Link 
-                  to="/app" 
-                  className="px-8 py-3 rounded-lg bg-[#0C2340] text-white font-medium text-lg hover:shadow-lg hover:shadow-[#0C2340]/40 transition-all duration-300 transform hover:-translate-y-1 hover:bg-[#0D2A4D]"
-                >
-                  Go to Dashboard
-                </Link>
-              ) : (
-                <Link 
-                  to="/login" 
-                  className="px-8 py-3 rounded-lg bg-[#0C2340] text-white font-medium text-lg hover:shadow-lg hover:shadow-[#0C2340]/40 transition-all duration-300 transform hover:-translate-y-1 hover:bg-[#0D2A4D]"
-                >
-                  Get Started
-                </Link>
-              )}
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-5 h-8 rounded-full border-2 flex items-start justify-center pt-1.5"
+            style={{ borderColor: 'var(--border-medium)' }}
+          >
+            <div className="w-1 h-1.5 rounded-full" style={{ background: 'var(--accent-light)' }} />
+          </motion.div>
+        </motion.div>
+      </motion.section>
+
+      {/* ═══ STATS ═══ */}
+      <section className="relative py-20 px-4">
+        <StatsRow />
+      </section>
+
+      {/* ═══ FEATURES — Tilt Cards + Icon Animations ═══ */}
+      <section className="relative py-32 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={stagger}
+            className="text-center mb-16"
+          >
+            <motion.p
+              variants={fadeUp}
+              className="text-sm font-semibold uppercase tracking-widest mb-3"
+              style={{ color: 'var(--accent)' }}
+            >
+              Features
+            </motion.p>
+            <motion.h2
+              variants={fadeUp}
+              className="text-3xl md:text-5xl font-bold mb-4"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <TextReveal>Everything you need to grade</TextReveal>
+              <br />
+              <span className="text-gradient"><TextReveal delay={0.2}>with confidence</TextReveal></span>
+            </motion.h2>
+            <motion.p
+              variants={fadeUp}
+              className="text-base max-w-xl mx-auto"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Built for educators who value precision, speed, and fairness in essay evaluation.
+            </motion.p>
+          </motion.div>
+
+          <ParallaxLayer speed={0.08}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {features.map((feature, i) => (
+                <FeatureCard key={feature.title} {...feature} delay={i * 0.1} index={i} />
+              ))}
             </div>
-          </div>
+          </ParallaxLayer>
         </div>
       </section>
 
-      {/* Footer - elegant and minimal */}
-      <footer className="relative z-10 py-10 border-t border-[#0C2340]">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-4 md:mb-0">
-              <h3 className="text-xl font-bold text-white">
-                LitMark
-              </h3>
-              <p className="text-gray-400 text-sm mt-1">© {new Date().getFullYear()} LitMark. All rights reserved.</p>
+      {/* ═══ HOW IT WORKS ═══ */}
+      <section className="relative py-32 px-4">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={stagger}
+            className="text-center mb-20"
+          >
+            <motion.p
+              variants={fadeUp}
+              className="text-sm font-semibold uppercase tracking-widest mb-3"
+              style={{ color: 'var(--accent)' }}
+            >
+              How It Works
+            </motion.p>
+            <motion.h2
+              variants={fadeUp}
+              className="text-3xl md:text-5xl font-bold"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <TextReveal>Three simple steps</TextReveal>
+            </motion.h2>
+          </motion.div>
+
+          <ParallaxLayer speed={0.1}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 relative">
+              {/* Connecting line */}
+              <div
+                className="hidden md:block absolute top-7 left-[20%] right-[20%] h-px"
+                style={{ background: 'linear-gradient(90deg, transparent, var(--border-medium), var(--border-medium), transparent)' }}
+              />
+              {steps.map((step, i) => (
+                <StepCard key={step.number} {...step} delay={i * 0.15} />
+              ))}
             </div>
-            <div className="flex space-x-8">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                Terms
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                Privacy
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                Contact
-              </a>
-            </div>
+          </ParallaxLayer>
+        </div>
+      </section>
+
+      {/* ═══ PRICING ═══ */}
+      <PricingSection />
+
+      {/* ═══ CTA ═══ */}
+      <section className="relative py-32 px-4">
+        <div className="max-w-3xl mx-auto">
+          <ParallaxLayer speed={0.12}>
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeUp}
+              className="relative glass glow-border rounded-3xl p-10 md:p-16 text-center overflow-hidden"
+            >
+              <div
+                className="absolute inset-0 opacity-30"
+                style={{
+                  background: 'radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 70%)',
+                }}
+              />
+              <div className="relative">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                  <TextReveal>Ready to transform your</TextReveal>
+                  <br />
+                  <span className="text-gradient"><TextReveal delay={0.2}>grading workflow?</TextReveal></span>
+                </h2>
+                <p className="text-base mb-8 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                  Join educators who save hours every week with AI-powered essay evaluation.
+                </p>
+                <MagneticButton>
+                  <Link
+                    to="/app"
+                    className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-white font-semibold transition-all duration-300"
+                    style={{
+                      background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
+                      boxShadow: '0 0 30px -5px rgba(99, 102, 241, 0.4)',
+                    }}
+                  >
+                    Get Started Free
+                    <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
+                  </Link>
+                </MagneticButton>
+              </div>
+            </motion.div>
+          </ParallaxLayer>
+        </div>
+      </section>
+
+      {/* ═══ FOOTER ═══ */}
+      <footer className="py-12 px-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-bold text-gradient">LitMark</span>
           </div>
+          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            © {new Date().getFullYear()} LitMark. Built for educators, by educators.
+          </p>
         </div>
       </footer>
     </div>
   );
 };
 
-export default LandingPage; 
+export default LandingPage;
