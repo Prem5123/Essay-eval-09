@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import AnimatedBackground from '../components/AnimatedBackground';
+
 
 const Signup = () => {
   const [name, setName] = useState('');
@@ -54,7 +54,7 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-20" style={{ background: 'var(--bg-deep)' }}>
-      <AnimatedBackground intensity="subtle" />
+
 
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -78,7 +78,7 @@ const Signup = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-6 px-4 py-3 rounded-xl text-sm"
-            style={{ background: 'var(--error-bg)', border: '1px solid rgba(248,113,113,0.15)', color: 'var(--error)' }}
+            style={{ background: 'var(--error-bg)', border: '1px solid rgba(212,74,74,0.15)', color: 'var(--error)' }}
           >
             {error}
           </motion.div>

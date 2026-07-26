@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useId } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
     Upload, FileText, Loader2, X, Download, AlertTriangle,
-    CheckCircle, Settings, Clipboard, Sparkles, ArrowRight, Package
+    CheckCircle, Settings, Clipboard, Sparkles, ArrowRight, Package, BookOpen, Palette
 } from 'lucide-react';
 import presetRubrics from '../utils/presetRubrics';
 import AnimatedBackground from './AnimatedBackground';
@@ -102,13 +102,6 @@ const FileUploadCard = ({ files, setFiles }) => {
         if (validFiles.length === 0) return;
         setFiles(prev => {
             const allFiles = [...prev, ...validFiles];
-            const pdfFiles = allFiles.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
-            if (pdfFiles.length > 1) {
-                alert('Only one PDF at a time.');
-                const firstPdf = pdfFiles[0];
-                const nonPdfs = allFiles.filter(f => f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf'));
-                return [...nonPdfs, firstPdf].slice(0, MAX_FILES);
-            }
             return allFiles.slice(0, MAX_FILES);
         });
     }, [setFiles, validateFile]);
@@ -334,12 +327,52 @@ const EssayEvaluator = () => {
     const [includeHighlights, setIncludeHighlights] = useState(true);
     const [includeMiniLessons, setIncludeMiniLessons] = useState(true);
     const [generosity, setGenerosity] = useState('standard');
+    const [paperMode, setPaperMode] = useState('organization');
+    const [pdfReportPreset, setPdfReportPreset] = useState('classic');
+    const [accentColor, setAccentColor] = useState('');
+    const [savedRubrics, setSavedRubrics] = useState([]);
 
     const essayPasteAreaId = useId();
     const presetRubricId = useId();
     const rubricFileUploadId = useId();
     const rubricPasteAreaId = useId();
     const generosityId = useId();
+
+    // Load saved rubrics on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('customRubrics');
+        if (saved) {
+            try {
+                setSavedRubrics(JSON.parse(saved));
+            } catch (e) {
+                console.error("Failed to parse saved rubrics", e);
+            }
+        }
+    }, []);
+
+    const saveCustomRubric = useCallback(() => {
+        if (!rubricText.trim()) { setError("Cannot save an empty rubric."); return; }
+        const name = prompt("Enter a name for this rubric:");
+        if (!name) return;
+
+        const newRubric = { id: `custom-${Date.now()}`, name: `(Custom) ${name}`, content: rubricText, isCustom: true };
+        const updatedRubrics = [...savedRubrics, newRubric];
+        setSavedRubrics(updatedRubrics);
+        localStorage.setItem('customRubrics', JSON.stringify(updatedRubrics));
+        alert(`Rubric "${name}" saved! It is now available in the dropdown.`);
+    }, [rubricText, savedRubrics]);
+
+    const deleteCustomRubric = useCallback((id) => {
+        if (window.confirm("Are you sure you want to delete this custom rubric?")) {
+            const updated = savedRubrics.filter(r => r.id !== id);
+            setSavedRubrics(updated);
+            localStorage.setItem('customRubrics', JSON.stringify(updated));
+            if (selectedPresetRubric === id) {
+                setSelectedPresetRubric('');
+                setRubricText('');
+            }
+        }
+    }, [savedRubrics, selectedPresetRubric]);
 
     useEffect(() => {
         if (error) {
@@ -351,14 +384,21 @@ const EssayEvaluator = () => {
     const handlePresetRubricChange = useCallback((e) => {
         const selectedId = e.target.value;
         setSelectedPresetRubric(selectedId);
-        const preset = presetRubrics.find(r => r.id === selectedId);
+
+        // Check built-in presets first
+        let preset = presetRubrics.find(r => r.id === selectedId);
+        // Then check custom saved rubrics
+        if (!preset) {
+            preset = savedRubrics.find(r => r.id === selectedId);
+        }
+
         if (preset) {
             setRubricText(preset.content);
             setRubricFile(null);
         } else {
             if (!rubricFile) setRubricText('');
         }
-    }, [rubricFile]);
+    }, [rubricFile, savedRubrics]);
 
     const handleRubricTextChange = useCallback((e) => {
         setRubricText(e.target.value);
@@ -387,8 +427,21 @@ const EssayEvaluator = () => {
     }, []);
 
     const handleSubmit = useCallback(async () => {
-        if (activeTab === 'upload' && files.length === 0) { setError('Please upload at least one essay file.'); return; }
-        if (activeTab === 'paste' && !essayText.trim()) { setError('Please paste your essay text.'); return; }
+        let mode = '';
+        if (files.length > 0 && essayText.trim()) {
+            if (window.confirm("You have both uploaded files and pasted text.\n\nClick OK to evaluate the UPLOADED FILES.\nClick Cancel to evaluate the PASTED TEXT.")) {
+                mode = 'upload';
+            } else {
+                mode = 'paste';
+            }
+        } else if (files.length > 0) {
+            mode = 'upload';
+        } else if (essayText.trim()) {
+            mode = 'paste';
+        } else {
+            setError('Please upload at least one essay file or paste your essay text.');
+            return;
+        }
 
         setError(null);
         setResults([]);
@@ -405,8 +458,11 @@ const EssayEvaluator = () => {
             formData.append('include_highlights', String(includeHighlights));
             formData.append('include_mini_lessons', String(includeMiniLessons));
             formData.append('generosity', generosity);
+            formData.append('paper_mode', paperMode);
+            formData.append('pdf_report_preset', pdfReportPreset);
+            if (accentColor) formData.append('accent_color', accentColor);
 
-            if (activeTab === 'upload') formData.append('essay', item, identifier);
+            if (mode === 'upload') formData.append('essay', item, identifier);
             else formData.append('essay', new Blob([item], { type: 'text/plain' }), identifier);
 
             try {
@@ -448,15 +504,9 @@ const EssayEvaluator = () => {
         };
 
         try {
-            if (activeTab === 'upload') {
-                const pdfFiles = files.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
-                if (pdfFiles.length > 1) throw new Error('Only one PDF file can be evaluated at a time.');
-                if (pdfFiles.length === 1) {
-                    await processItem(pdfFiles[0], pdfFiles[0].name);
-                } else if (files.length > 0) {
-                    await processItem(files[0], files[0].name);
-                    if (files.length > 1) alert('Multiple non-PDF files selected — only the first will be processed.');
-                }
+            if (mode === 'upload') {
+                const promises = files.map(file => processItem(file, file.name));
+                await Promise.allSettled(promises);
             } else {
                 await processItem(essayText, 'pasted-essay.txt');
             }
@@ -466,33 +516,24 @@ const EssayEvaluator = () => {
             setIsLoading(false);
             setProcessingMessage('');
         }
-    }, [activeTab, files, essayText, rubricFile, rubricText, includeCriteria, includeSuggestions, includeHighlights, includeMiniLessons, generosity, sessionId]);
+    }, [files, essayText, rubricFile, rubricText, includeCriteria, includeSuggestions, includeHighlights, includeMiniLessons, generosity, paperMode, pdfReportPreset, accentColor, sessionId]);
 
-    const handleDownload = useCallback(async (result) => {
+    const handleDownload = useCallback((result) => {
         if (!result.sessionId || !result.filename) { setError('Cannot download: missing data.'); return; }
         const downloadUrl = `${API_BASE_URL}/download-report/${result.sessionId}/${encodeURIComponent(result.filename)}`;
-        setIsLoading(true);
-        setProcessingMessage(`Downloading ${result.filename}...`);
+
+        // Use direct link to allow browser to handle Content-Disposition and filename from server
+        // This avoids Blob UUID issues
         try {
-            const response = await fetch(downloadUrl);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ detail: 'Download failed' }));
-                throw new Error(errorData.detail || 'Download failed');
-            }
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = result.filename.replace(/[^a-z0-9._-\s]/gi, '_').replace(/_{2,}/g, '_');
+            a.href = downloadUrl;
+            a.download = result.filename; // Hint to browser
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
         } catch (err) {
-            setError(err.message || 'Download error');
-        } finally {
-            setIsLoading(false);
-            setProcessingMessage('');
+            setError('Download failed to start.');
+            console.error(err);
         }
     }, []);
 
@@ -600,11 +641,29 @@ const EssayEvaluator = () => {
                                                             onChange={handlePresetRubricChange}
                                                             className={selectClass}
                                                         >
-                                                            <option value="">-- Custom / Default --</option>
-                                                            {presetRubrics.map(rubric => (
-                                                                <option key={rubric.id} value={rubric.id}>{rubric.name}</option>
-                                                            ))}
+                                                            <option value="">-- Choose a Preset or Custom Rubric --</option>
+                                                            <optgroup label="Standard Presets">
+                                                                {presetRubrics.map(rubric => (
+                                                                    <option key={rubric.id} value={rubric.id}>{rubric.name}</option>
+                                                                ))}
+                                                            </optgroup>
+                                                            {savedRubrics.length > 0 && (
+                                                                <optgroup label="My Custom Rubrics">
+                                                                    {savedRubrics.map(rubric => (
+                                                                        <option key={rubric.id} value={rubric.id}>{rubric.name}</option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            )}
                                                         </select>
+                                                        {/* Show delete button if a custom rubric is selected */}
+                                                        {selectedPresetRubric && savedRubrics.find(r => r.id === selectedPresetRubric) && (
+                                                            <button
+                                                                onClick={() => deleteCustomRubric(selectedPresetRubric)}
+                                                                className="mt-2 text-xs text-red-500 hover:text-red-600 underline"
+                                                            >
+                                                                Delete this custom rubric
+                                                            </button>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <label htmlFor={rubricFileUploadId} className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -628,9 +687,19 @@ const EssayEvaluator = () => {
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label htmlFor={rubricPasteAreaId} className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                                                        Custom Rubric Text
-                                                    </label>
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <label htmlFor={rubricPasteAreaId} className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                                            Custom Rubric Text
+                                                        </label>
+                                                        {rubricText.trim() && !selectedPresetRubric && (
+                                                            <button
+                                                                onClick={saveCustomRubric}
+                                                                className="text-xs px-2 py-1 rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
+                                                            >
+                                                                Save as Preset
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     <textarea
                                                         id={rubricPasteAreaId}
                                                         value={rubricText}
@@ -640,6 +709,134 @@ const EssayEvaluator = () => {
                                                         disabled={!!rubricFile || !!selectedPresetRubric}
                                                     />
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Paper Mode + Generosity row */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>
+                                                    Document Type
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    {[
+                                                        { id: 'organization', label: 'Organization', icon: Package },
+                                                        { id: 'general', label: 'General Paper', icon: BookOpen },
+                                                    ].map(({ id, label, icon: Icon }) => (
+                                                        <button
+                                                            key={id}
+                                                            onClick={() => setPaperMode(id)}
+                                                            className="relative flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                                                            style={{
+                                                                background: paperMode === id ? 'var(--accent-glow)' : 'var(--bg-deep)',
+                                                                border: `1px solid ${paperMode === id ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
+                                                                color: paperMode === id ? 'var(--accent-light)' : 'var(--text-tertiary)',
+                                                            }}
+                                                        >
+                                                            <Icon size={14} />
+                                                            {label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                                    {paperMode === 'organization'
+                                                        ? 'Splits multi-student uploads, detects "Student Name:" headers'
+                                                        : 'Treats entire document as one paper, detects author names'
+                                                    }
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>
+                                                    PDF Report Style <Palette size={14} className="inline ml-1 text-accent" />
+                                                </label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {[
+                                                        { id: 'classic', label: 'Classic', desc: 'Modern' },
+                                                        { id: 'academic', label: 'Academic', desc: 'Formal' },
+                                                        { id: 'supportive', label: 'Supportive', desc: 'Friendly' },
+                                                        { id: 'minimalist', label: 'Minimalist', desc: 'Clean' },
+                                                        { id: 'super_annotated', label: 'Super Report', desc: 'Annotated + Full Text' }
+                                                    ].map((preset) => (
+                                                        <button
+                                                            key={preset.id}
+                                                            onClick={() => setPdfReportPreset(preset.id)}
+                                                            className={`relative px-3 py-2 rounded-xl text-left transition-all duration-200 border ${preset.id === 'super_annotated' ? 'col-span-2' : ''}`}
+                                                            style={{
+                                                                background: pdfReportPreset === preset.id ? 'var(--accent-glow)' : 'var(--bg-deep)',
+                                                                borderColor: pdfReportPreset === preset.id ? 'var(--border-accent)' : 'var(--border-subtle)',
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center justify-between mb-0.5">
+                                                                <span className="font-medium text-sm flex items-center gap-1" style={{ color: pdfReportPreset === preset.id ? 'var(--accent-light)' : 'var(--text-secondary)' }}>
+                                                                    {preset.label}
+                                                                    {preset.id === 'super_annotated' && <Sparkles size={10} className="text-yellow-400" />}
+                                                                </span>
+                                                                {pdfReportPreset === preset.id && <CheckCircle size={12} className="text-accent" />}
+                                                            </div>
+                                                            <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{preset.desc}</div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Accent Color Picker */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>
+                                                    Report Accent Color 🎨
+                                                </label>
+                                                <div className="flex flex-wrap gap-2 items-center">
+                                                    {[
+                                                        { hex: '', label: 'Default' },
+                                                        { hex: '#7c3aed', label: 'Purple' },
+                                                        { hex: '#2563eb', label: 'Blue' },
+                                                        { hex: '#0d9488', label: 'Teal' },
+                                                        { hex: '#059669', label: 'Green' },
+                                                        { hex: '#dc2626', label: 'Red' },
+                                                        { hex: '#ea580c', label: 'Orange' },
+                                                        { hex: '#be185d', label: 'Pink' },
+                                                    ].map((c) => (
+                                                        <button
+                                                            key={c.hex || 'default'}
+                                                            onClick={() => setAccentColor(c.hex)}
+                                                            title={c.label}
+                                                            className="relative rounded-full transition-all duration-200 flex items-center justify-center"
+                                                            style={{
+                                                                width: 28,
+                                                                height: 28,
+                                                                background: c.hex || 'linear-gradient(135deg, #7c3aed, #2563eb, #059669)',
+                                                                border: accentColor === c.hex
+                                                                    ? '2.5px solid var(--text-primary)'
+                                                                    : '2px solid var(--border-subtle)',
+                                                                boxShadow: accentColor === c.hex ? '0 0 0 2px var(--accent-glow)' : 'none',
+                                                                transform: accentColor === c.hex ? 'scale(1.2)' : 'scale(1)',
+                                                            }}
+                                                        >
+                                                            {accentColor === c.hex && (
+                                                                <CheckCircle size={12} style={{ color: c.hex ? 'white' : 'var(--text-primary)' }} />
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                    <input
+                                                        type="text"
+                                                        placeholder="#hex"
+                                                        value={accentColor}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if (val === '' || /^#[0-9a-fA-F]{0,6}$/.test(val)) {
+                                                                setAccentColor(val);
+                                                            }
+                                                        }}
+                                                        className="w-20 px-2 py-1 rounded-lg text-xs text-center"
+                                                        style={{
+                                                            background: 'var(--bg-deep)',
+                                                            border: '1px solid var(--border-subtle)',
+                                                            color: 'var(--text-primary)',
+                                                        }}
+                                                    />
+                                                </div>
+                                                <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                                    Choose a custom accent color for headers and styling in PDF reports
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -659,7 +856,7 @@ const EssayEvaluator = () => {
                             whileHover={{ scale: isLoading ? 1 : 1.02 }}
                             whileTap={{ scale: isLoading ? 1 : 0.98 }}
                             onClick={handleSubmit}
-                            disabled={isLoading || (activeTab === 'upload' && !files.length) || (activeTab === 'paste' && !essayText.trim())}
+                            disabled={isLoading || (files.length === 0 && !essayText.trim())}
                             className="group w-full max-w-md py-3.5 px-8 rounded-2xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
                             style={{
                                 background: isLoading

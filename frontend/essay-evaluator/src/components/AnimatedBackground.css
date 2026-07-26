@@ -20,9 +20,9 @@
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
-        radial-gradient(ellipse 60% 80% at 80% 60%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse 50% 40% at 50% 90%, rgba(79, 70, 229, 0.06) 0%, transparent 50%);
+        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(250, 129, 18, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 80% at 80% 60%, rgba(252, 166, 78, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 40% at 50% 90%, rgba(217, 108, 5, 0.05) 0%, transparent 50%);
 }
 
 /* ─── Floating Orbs ─── */
@@ -32,6 +32,7 @@
     filter: blur(80px);
     will-change: transform;
     backface-visibility: hidden;
+    transform: translateZ(0);
 }
 
 .bg-orb--1 {
@@ -39,7 +40,7 @@
     height: 600px;
     top: -10%;
     left: -5%;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(250, 129, 18, 0.12) 0%, transparent 70%);
     animation: orb-drift-1 20s ease-in-out infinite;
 }
 
@@ -48,7 +49,7 @@
     height: 500px;
     top: 30%;
     right: -10%;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.14) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(252, 166, 78, 0.10) 0%, transparent 70%);
     animation: orb-drift-2 25s ease-in-out infinite;
 }
 
@@ -57,7 +58,7 @@
     height: 400px;
     bottom: -5%;
     left: 30%;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(250, 129, 18, 0.08) 0%, transparent 70%);
     animation: orb-drift-3 18s ease-in-out infinite;
 }
 
@@ -66,7 +67,7 @@
     height: 300px;
     top: 60%;
     left: 10%;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(217, 108, 5, 0.06) 0%, transparent 70%);
     animation: orb-drift-4 22s ease-in-out infinite;
 }
 
@@ -79,10 +80,10 @@
     left: -25%;
     background: linear-gradient(90deg,
             transparent 0%,
-            rgba(99, 102, 241, 0.04) 20%,
-            rgba(139, 92, 246, 0.06) 40%,
-            rgba(99, 102, 241, 0.04) 60%,
-            rgba(168, 85, 247, 0.03) 80%,
+            rgba(250, 129, 18, 0.03) 20%,
+            rgba(252, 166, 78, 0.05) 40%,
+            rgba(250, 129, 18, 0.03) 60%,
+            rgba(217, 108, 5, 0.02) 80%,
             transparent 100%);
     filter: blur(40px);
     transform: rotate(-5deg);
@@ -120,19 +121,19 @@
 
     0%,
     100% {
-        transform: translate(0, 0) scale(1);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 
     25% {
-        transform: translate(60px, 40px) scale(1.05);
+        transform: translate3d(60px, 40px, 0) scale(1.05);
     }
 
     50% {
-        transform: translate(30px, 80px) scale(0.95);
+        transform: translate3d(30px, 80px, 0) scale(0.95);
     }
 
     75% {
-        transform: translate(-20px, 30px) scale(1.02);
+        transform: translate3d(-20px, 30px, 0) scale(1.02);
     }
 }
 
@@ -140,19 +141,19 @@
 
     0%,
     100% {
-        transform: translate(0, 0) scale(1);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 
     25% {
-        transform: translate(-50px, 30px) scale(1.08);
+        transform: translate3d(-50px, 30px, 0) scale(1.08);
     }
 
     50% {
-        transform: translate(-80px, -20px) scale(0.92);
+        transform: translate3d(-80px, -20px, 0) scale(0.92);
     }
 
     75% {
-        transform: translate(-30px, -50px) scale(1.04);
+        transform: translate3d(-30px, -50px, 0) scale(1.04);
     }
 }
 
@@ -160,15 +161,15 @@
 
     0%,
     100% {
-        transform: translate(0, 0) scale(1);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 
     33% {
-        transform: translate(40px, -40px) scale(1.06);
+        transform: translate3d(40px, -40px, 0) scale(1.06);
     }
 
     66% {
-        transform: translate(-30px, -20px) scale(0.96);
+        transform: translate3d(-30px, -20px, 0) scale(0.96);
     }
 }
 
@@ -176,11 +177,11 @@
 
     0%,
     100% {
-        transform: translate(0, 0);
+        transform: translate3d(0, 0, 0);
     }
 
     50% {
-        transform: translate(50px, -30px);
+        transform: translate3d(50px, -30px, 0);
     }
 }
 

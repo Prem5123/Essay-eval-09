@@ -43,7 +43,7 @@ const App = () => {
     <>
       <AnimatedBackground intensity="normal" />
       <Navbar />
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<PageTransition><LandingPage /></PageTransition>} />
           <Route path="/login" element={<PageTransition><Login /></PageTransition>} />

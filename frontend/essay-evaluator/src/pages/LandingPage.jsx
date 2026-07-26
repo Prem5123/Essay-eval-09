@@ -40,7 +40,7 @@ const scaleIn = {
 
 const TextReveal = ({ children, className = '', delay = 0 }) => {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-50px' });
+  const isInView = useInView(ref, { once: true });
 
   // Split by words
   const words = typeof children === 'string' ? children.split(' ') : [children];
@@ -53,9 +53,9 @@ const TextReveal = ({ children, className = '', delay = 0 }) => {
             initial={{ y: '110%' }}
             animate={isInView ? { y: '0%' } : { y: '110%' }}
             transition={{
-              duration: 0.6,
-              delay: delay + i * 0.04,
-              ease: [0.22, 1, 0.36, 1],
+              duration: 1.0,
+              delay: delay + i * 0.08,
+              ease: [0.25, 1, 0.5, 1],
             }}
           >
             {word}
@@ -66,11 +66,33 @@ const TextReveal = ({ children, className = '', delay = 0 }) => {
   );
 };
 
+const TextRevealLeftRight = ({ children, className = '', delay = 0 }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '0px' });
+
+  return (
+    <motion.span
+      ref={ref}
+      initial={{ clipPath: 'polygon(0 0, 0 100%, 0 100%, 0 0)' }}
+      animate={isInView ? { clipPath: 'polygon(0 0, 0 100%, 100% 100%, 100% 0)' } : { clipPath: 'polygon(0 0, 0 100%, 0 100%, 0 0)' }}
+      transition={{
+        duration: 1.2,
+        delay: delay,
+        ease: [0.25, 1, 0.5, 1],
+      }}
+      className={`inline-block ${className}`}
+      style={{ willChange: 'clip-path' }} // Optimize for GPU
+    >
+      {children}
+    </motion.span>
+  );
+};
+
 // ═══════════════════════════════════════════════
 // TYPEWRITER
 // ═══════════════════════════════════════════════
 
-const TypewriterText = ({ words, className }) => {
+const TypewriterText = ({ words, className, ...props }) => {
   const [index, setIndex] = useState(0);
   const [text, setText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -93,7 +115,7 @@ const TypewriterText = ({ words, className }) => {
   }, [text, isDeleting, index, words]);
 
   return (
-    <span className={className}>
+    <span className={className} {...props}>
       {text}
       <span className="animate-blink" style={{ color: 'var(--accent-light)' }}>|</span>
     </span>
@@ -423,7 +445,7 @@ const PricingSection = () => {
                 <div>
                   <div
                     className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
-                    style={{ background: 'rgba(52, 211, 153, 0.12)', color: 'var(--success)' }}
+                    style={{ background: 'var(--success-bg)', color: 'var(--success)' }}
                   >
                     <Gift size={12} />
                     Forever Free
@@ -467,7 +489,7 @@ const PricingSection = () => {
                   className="group flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-white font-semibold text-base transition-all duration-300"
                   style={{
                     background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
-                    boxShadow: '0 0 30px -5px rgba(99, 102, 241, 0.4)',
+                    boxShadow: '0 0 30px -5px rgba(250, 129, 18, 0.35)',
                   }}
                 >
                   Start Using for Free
@@ -571,7 +593,7 @@ const LandingPage = () => {
           {/* Main Heading — Text Reveal */}
           <ParallaxLayer speed={-0.1}>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[0.95] mb-6">
-              <span className="text-gradient">
+              <span className="text-gradient-accent">
                 <TextReveal delay={0.3}>Grade smarter.</TextReveal>
               </span>
               <br />
@@ -592,7 +614,8 @@ const LandingPage = () => {
             Professional essay evaluation for{' '}
             <TypewriterText
               words={['teachers', 'professors', 'students', 'institutions']}
-              className="font-semibold"
+              className="font-bold"
+              style={{ color: 'var(--accent)' }}
             />
           </motion.p>
 
@@ -610,7 +633,7 @@ const LandingPage = () => {
                   className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-white font-semibold text-base transition-all duration-300"
                   style={{
                     background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
-                    boxShadow: '0 0 30px -5px rgba(99, 102, 241, 0.4)',
+                    boxShadow: '0 0 30px -5px rgba(250, 129, 18, 0.35)',
                   }}
                 >
                   Start Evaluating
@@ -758,7 +781,7 @@ const LandingPage = () => {
       <PricingSection />
 
       {/* ═══ CTA ═══ */}
-      <section className="relative py-32 px-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 400px' }}>
+      <section className="relative py-32 px-4 section-dark rounded-t-[3rem]" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 400px' }}>
         <div className="max-w-3xl mx-auto">
           <ParallaxLayer speed={0.12}>
             <motion.div
@@ -786,10 +809,11 @@ const LandingPage = () => {
                 <MagneticButton>
                   <Link
                     to="/app"
-                    className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-white font-semibold transition-all duration-300"
+                    className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-semibold transition-all duration-300"
                     style={{
                       background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
-                      boxShadow: '0 0 30px -5px rgba(99, 102, 241, 0.4)',
+                      color: '#FAF3E1',
+                      boxShadow: '0 0 30px -5px rgba(250, 129, 18, 0.35)',
                     }}
                   >
                     Get Started Free
@@ -803,12 +827,12 @@ const LandingPage = () => {
       </section>
 
       {/* ═══ FOOTER ═══ */}
-      <footer className="py-12 px-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+      <footer className="py-12 px-4 section-dark">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="text-lg font-bold text-gradient">LitMark</span>
           </div>
-          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+          <p className="text-sm" style={{ color: 'var(--dark-text-tertiary)' }}>
             © {new Date().getFullYear()} LitMark. Built for educators, by educators.
           </p>
         </div>

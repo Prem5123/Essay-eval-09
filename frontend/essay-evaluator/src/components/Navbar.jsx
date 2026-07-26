@@ -5,12 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, LogOut, User } from 'lucide-react';
 import logoSvg from '../assets/images/Litmark.png';
 
-const NavLink = ({ to, children, isActive, onClick }) => (
+const NavLink = ({ to, children, isActive, onClick, scrolled }) => (
   <Link
     to={to}
     onClick={onClick}
     className="relative px-4 py-2 text-sm font-medium transition-colors duration-200"
-    style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+    style={{ color: isActive ? (scrolled ? 'var(--dark-text-primary)' : 'var(--text-primary)') : (scrolled ? 'var(--dark-text-secondary)' : 'var(--text-secondary)') }}
   >
     {children}
     {isActive && (
@@ -52,8 +52,8 @@ const Navbar = () => {
       animate={{ y: 0 }}
       transition={{ type: 'spring', stiffness: 200, damping: 30 }}
       className={`fixed w-full z-50 transition-all duration-500 ${scrolled
-          ? 'glass-strong shadow-glow'
-          : 'bg-transparent'
+        ? 'section-dark shadow-lg'
+        : 'bg-transparent'
         }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -74,11 +74,11 @@ const Navbar = () => {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1">
-            <NavLink to="/" isActive={location.pathname === '/'}>
+            <NavLink to="/" isActive={location.pathname === '/'} scrolled={scrolled}>
               Home
             </NavLink>
             {currentUser && (
-              <NavLink to="/app" isActive={location.pathname === '/app'}>
+              <NavLink to="/app" isActive={location.pathname === '/app'} scrolled={scrolled}>
                 Dashboard
               </NavLink>
             )}
@@ -91,13 +91,13 @@ const Navbar = () => {
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass text-sm">
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{ background: 'var(--accent)', color: 'white' }}
+                    style={{ background: 'var(--accent)', color: '#FAF3E1' }}
                   >
                     {currentUser.displayName
                       ? currentUser.displayName.charAt(0).toUpperCase()
                       : 'U'}
                   </div>
-                  <span style={{ color: 'var(--text-secondary)' }} className="text-sm font-medium">
+                  <span style={{ color: scrolled ? 'var(--dark-text-secondary)' : 'var(--text-secondary)' }} className="text-sm font-medium">
                     {currentUser.displayName || 'User'}
                   </span>
                 </div>
@@ -107,8 +107,8 @@ const Navbar = () => {
                   onClick={handleLogout}
                   className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all"
                   style={{
-                    color: 'var(--text-secondary)',
-                    border: '1px solid var(--border-subtle)',
+                    color: scrolled ? 'var(--dark-text-secondary)' : 'var(--text-secondary)',
+                    border: `1px solid ${scrolled ? 'var(--dark-border-subtle)' : 'var(--border-subtle)'}`,
                   }}
                 >
                   <LogOut size={14} />
@@ -120,7 +120,7 @@ const Navbar = () => {
                 <Link
                   to="/login"
                   className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
-                  style={{ color: 'var(--text-secondary)' }}
+                  style={{ color: scrolled ? 'var(--dark-text-secondary)' : 'var(--text-secondary)' }}
                 >
                   Sign in
                 </Link>
