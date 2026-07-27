@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useInView, useScroll, useTransform } from 'framer-motion';
+import { m, useInView, useReducedMotion } from 'framer-motion';
 import {
   Upload, FileText, Sparkles, Zap, Shield, BarChart3,
   ArrowRight, CheckCircle, ChevronRight, Gift, Heart
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import BrandLogo from '../components/BrandLogo';
 
 // ═══════════════════════════════════════════════
 // ANIMATION VARIANTS
@@ -46,45 +48,58 @@ const TextReveal = ({ children, className = '', delay = 0 }) => {
   const words = typeof children === 'string' ? children.split(' ') : [children];
 
   return (
-    <span ref={ref} className={`inline-flex flex-wrap gap-x-[0.3em] ${className}`}>
+    <span
+      ref={ref}
+      className={`inline-flex flex-wrap ${className}`}
+    >
+      {typeof children === 'string' && (
+        <span className="sr-only">{children}</span>
+      )}
       {words.map((word, i) => (
-        <span key={i} className="text-reveal-line">
-          <motion.span
+        <span
+          key={`${word}-${i}`}
+          className="text-reveal-line"
+          aria-hidden={typeof children === 'string' ? 'true' : undefined}
+        >
+          <m.span
             initial={{ y: '110%' }}
             animate={isInView ? { y: '0%' } : { y: '110%' }}
             transition={{
-              duration: 1.0,
-              delay: delay + i * 0.08,
+              duration: 0.55,
+              delay: delay + i * 0.045,
               ease: [0.25, 1, 0.5, 1],
             }}
           >
-            {word}
-          </motion.span>
+            {word}{i < words.length - 1 ? '\u00a0' : ''}
+          </m.span>
         </span>
       ))}
     </span>
   );
 };
 
-const TextRevealLeftRight = ({ children, className = '', delay = 0 }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '0px' });
+// The hero uses one composited layer per line. Keeping the gradient on the
+// moving layer avoids repainting the full heading on every animation frame.
+const HeroTextReveal = ({ children, className = '', delay = 0 }) => {
+  const reduceMotion = useReducedMotion();
 
   return (
-    <motion.span
-      ref={ref}
-      initial={{ clipPath: 'polygon(0 0, 0 100%, 0 100%, 0 0)' }}
-      animate={isInView ? { clipPath: 'polygon(0 0, 0 100%, 100% 100%, 100% 0)' } : { clipPath: 'polygon(0 0, 0 100%, 0 100%, 0 0)' }}
-      transition={{
-        duration: 1.2,
-        delay: delay,
-        ease: [0.25, 1, 0.5, 1],
-      }}
-      className={`inline-block ${className}`}
-      style={{ willChange: 'clip-path' }} // Optimize for GPU
-    >
-      {children}
-    </motion.span>
+    <span className="hero-text-reveal">
+      <span className="sr-only">{children}</span>
+      <m.span
+        aria-hidden="true"
+        className={`hero-text-reveal__content ${className}`}
+        initial={reduceMotion ? false : { opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: reduceMotion ? 0 : 0.34,
+          delay: reduceMotion ? 0 : delay,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      >
+        {children}
+      </m.span>
+    </span>
   );
 };
 
@@ -93,17 +108,27 @@ const TextRevealLeftRight = ({ children, className = '', delay = 0 }) => {
 // ═══════════════════════════════════════════════
 
 const TypewriterText = ({ words, className, ...props }) => {
+  const reduceMotion = useReducedMotion();
+  const ref = useRef(null);
+  const isInView = useInView(ref);
   const [index, setIndex] = useState(0);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(words[0] || '');
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
+    if (reduceMotion) {
+      setText(words[0] || '');
+      return undefined;
+    }
+    if (!isInView) return undefined;
+
     const current = words[index];
-    const speed = isDeleting ? 40 : 80;
+    const isPaused = !isDeleting && text === current;
+    const speed = isPaused ? 1800 : isDeleting ? 55 : 95;
 
     const timeout = setTimeout(() => {
-      if (!isDeleting && text === current) {
-        setTimeout(() => setIsDeleting(true), 2000);
+      if (isPaused) {
+        setIsDeleting(true);
       } else if (isDeleting && text === '') {
         setIsDeleting(false);
         setIndex((prev) => (prev + 1) % words.length);
@@ -112,12 +137,15 @@ const TypewriterText = ({ words, className, ...props }) => {
       }
     }, speed);
     return () => clearTimeout(timeout);
-  }, [text, isDeleting, index, words]);
+  }, [text, isDeleting, index, words, reduceMotion, isInView]);
 
   return (
-    <span className={className} {...props}>
-      {text}
-      <span className="animate-blink" style={{ color: 'var(--accent-light)' }}>|</span>
+    <span ref={ref} className={className} {...props}>
+      <span className="sr-only">{words[0]}</span>
+      <span aria-hidden="true">
+        {text}
+        {!reduceMotion && <span className="animate-blink" style={{ color: 'var(--accent-ink)' }}>|</span>}
+      </span>
     </span>
   );
 };
@@ -126,36 +154,9 @@ const TypewriterText = ({ words, className, ...props }) => {
 // MAGNETIC BUTTON — shifts toward cursor on hover
 // ═══════════════════════════════════════════════
 
-const MagneticButton = ({ children, className = '', strength = 0.3, ...props }) => {
-  const ref = useRef(null);
-
-  const handleMouseMove = useCallback((e) => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    el.style.transform = `translate(${x * strength}px, ${y * strength}px)`;
-  }, [strength]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (ref.current) {
-      ref.current.style.transform = 'translate(0px, 0px)';
-    }
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={`transition-transform duration-200 ease-out ${className}`}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
+const MagneticButton = ({ children, className = '' }) => (
+  <div className={className}>{children}</div>
+);
 
 // ═══════════════════════════════════════════════
 // ANIMATED COUNTER — counts up when scrolled into view
@@ -164,24 +165,29 @@ const MagneticButton = ({ children, className = '', strength = 0.3, ...props }) 
 const AnimatedCounter = ({ target, suffix = '', prefix = '', duration = 2 }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
+  const reduceMotion = useReducedMotion();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (!isInView) return;
-    let start = 0;
-    const end = target;
-    const step = Math.ceil(end / (duration * 60)); // ~60fps
+    if (reduceMotion) {
+      setCount(target);
+      return undefined;
+    }
+
+    const startedAt = performance.now();
     const timer = setInterval(() => {
-      start += step;
-      if (start >= end) {
-        setCount(end);
+      const progress = Math.min(
+        (performance.now() - startedAt) / (duration * 1000),
+        1,
+      );
+      setCount(Math.round(target * progress));
+      if (progress >= 1) {
         clearInterval(timer);
-      } else {
-        setCount(start);
       }
-    }, 1000 / 60);
+    }, 50);
     return () => clearInterval(timer);
-  }, [isInView, target, duration]);
+  }, [isInView, target, duration, reduceMotion]);
 
   return (
     <span ref={ref} className="tabular-nums">
@@ -194,55 +200,18 @@ const AnimatedCounter = ({ target, suffix = '', prefix = '', duration = 2 }) => 
 // PARALLAX WRAPPER
 // ═══════════════════════════════════════════════
 
-const ParallaxLayer = memo(({ children, speed = 0.5, className = '' }) => {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start end', 'end start'],
-  });
-  const y = useTransform(scrollYProgress, [0, 1], [speed * -60, speed * 60]);
-
-  return (
-    <motion.div ref={ref} style={{ y }} className={className}>
-      {children}
-    </motion.div>
-  );
-});
+const ParallaxLayer = memo(({ children, className = '' }) => (
+  <div className={className}>{children}</div>
+));
+ParallaxLayer.displayName = 'ParallaxLayer';
 
 // ═══════════════════════════════════════════════
 // TILT CARD — 3D perspective card with shine highlight
 // ═══════════════════════════════════════════════
 
 const TiltCard = ({ children, className = '' }) => {
-  const ref = useRef(null);
-
-  const handleMouseMove = useCallback((e) => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    const rotateX = (y - 0.5) * -8;  // subtle tilt
-    const rotateY = (x - 0.5) * 8;
-    el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-    // Update shine position
-    el.style.setProperty('--shine-x', `${x * 100}%`);
-    el.style.setProperty('--shine-y', `${y * 100}%`);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    if (ref.current) {
-      ref.current.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
-    }
-  }, []);
-
   return (
-    <div
-      ref={ref}
-      className={`tilt-card ${className}`}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className={`tilt-card ${className}`}>
       <div className="tilt-card-inner relative">
         <div className="tilt-card-shine" />
         {children}
@@ -263,7 +232,7 @@ const FeatureCard = ({ icon: Icon, title, description, delay, index }) => {
   const isInView = useInView(ref, { once: true, margin: '-50px' });
 
   return (
-    <motion.div
+    <m.div
       ref={ref}
       custom={delay}
       initial="hidden"
@@ -276,7 +245,7 @@ const FeatureCard = ({ icon: Icon, title, description, delay, index }) => {
         <div className="relative">
           <div
             className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-all duration-300 group-hover:scale-110 ${iconAnimations[index] || 'icon-animate-bounce'}`}
-            style={{ background: 'var(--accent-glow)', color: 'var(--accent-light)' }}
+            style={{ background: 'var(--accent-glow)', color: 'var(--accent-ink)' }}
           >
             <Icon size={22} strokeWidth={1.8} />
           </div>
@@ -288,7 +257,7 @@ const FeatureCard = ({ icon: Icon, title, description, delay, index }) => {
           </p>
         </div>
       </TiltCard>
-    </motion.div>
+    </m.div>
   );
 };
 
@@ -301,7 +270,7 @@ const StepCard = ({ number, title, description, delay }) => {
   const isInView = useInView(ref, { once: true, margin: '-50px' });
 
   return (
-    <motion.div
+    <m.div
       ref={ref}
       custom={delay}
       initial="hidden"
@@ -311,7 +280,7 @@ const StepCard = ({ number, title, description, delay }) => {
     >
       <div
         className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold mb-5 glow-border"
-        style={{ background: 'var(--accent-glow)', color: 'var(--accent-light)' }}
+        style={{ background: 'var(--accent-glow)', color: 'var(--accent-ink)' }}
       >
         {number}
       </div>
@@ -321,7 +290,7 @@ const StepCard = ({ number, title, description, delay }) => {
       <p className="text-sm max-w-xs" style={{ color: 'var(--text-secondary)' }}>
         {description}
       </p>
-    </motion.div>
+    </m.div>
   );
 };
 
@@ -334,14 +303,14 @@ const StatsRow = () => {
   const isInView = useInView(ref, { once: true, margin: '-60px' });
 
   const stats = [
-    { target: 10, suffix: '+', label: 'File formats' },
+    { target: 3, suffix: '', label: 'File formats' },
     { target: 0, prefix: '$', suffix: '', label: 'Cost, forever' },
     { target: 30, suffix: 's', label: 'Avg. grading time' },
     { target: 10, suffix: '', label: 'Files per batch' },
   ];
 
   return (
-    <motion.div
+    <m.div
       ref={ref}
       initial={{ opacity: 0, y: 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -349,7 +318,7 @@ const StatsRow = () => {
       className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-3xl mx-auto"
     >
       {stats.map((stat, i) => (
-        <motion.div
+        <m.div
           key={stat.label}
           initial={{ opacity: 0, y: 15 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -364,12 +333,12 @@ const StatsRow = () => {
               duration={1.5}
             />
           </div>
-          <div className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
-            {stat.label}
-          </div>
-        </motion.div>
+	          <div className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+	            {stat.label}
+	          </div>
+	        </m.div>
       ))}
-    </motion.div>
+    </m.div>
   );
 };
 
@@ -377,7 +346,7 @@ const StatsRow = () => {
 // PRICING SECTION — Rotating gradient border
 // ═══════════════════════════════════════════════
 
-const PricingSection = () => {
+const PricingSection = ({ ctaPath }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-80px' });
 
@@ -395,38 +364,38 @@ const PricingSection = () => {
   return (
     <section ref={ref} className="relative py-32 px-4">
       <div className="max-w-4xl mx-auto">
-        <motion.div
+        <m.div
           initial="hidden"
           animate={isInView ? 'visible' : 'hidden'}
           variants={stagger}
           className="text-center mb-16"
         >
-          <motion.p
+          <m.p
             variants={fadeUp}
             className="text-sm font-semibold uppercase tracking-widest mb-3"
-            style={{ color: 'var(--accent)' }}
+            style={{ color: 'var(--accent-ink)' }}
           >
             Pricing
-          </motion.p>
-          <motion.h2
+          </m.p>
+          <m.h2
             variants={fadeUp}
             className="text-3xl md:text-5xl font-bold mb-4"
             style={{ color: 'var(--text-primary)' }}
           >
             <TextReveal delay={0.1}>100% Free.</TextReveal>{' '}
             <span className="text-gradient"><TextReveal delay={0.3}>No catches.</TextReveal></span>
-          </motion.h2>
-          <motion.p
+          </m.h2>
+          <m.p
             variants={fadeUp}
             className="text-base max-w-xl mx-auto"
             style={{ color: 'var(--text-secondary)' }}
           >
-            We believe every educator deserves access to great tools. That's why LitMark is completely free — forever.
-          </motion.p>
-        </motion.div>
+            We believe every educator deserves access to great tools. That’s why LitMark is completely free — forever.
+          </m.p>
+        </m.div>
 
         <ParallaxLayer speed={0.15}>
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 30, scale: 0.97 }}
             animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
             transition={{ duration: 0.7, delay: 0.3 }}
@@ -455,12 +424,7 @@ const PricingSection = () => {
                     <span className="text-lg" style={{ color: 'var(--text-tertiary)' }}>/forever</span>
                   </div>
                 </div>
-                <motion.div
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  <Heart size={32} className="animate-pulse-glow" style={{ color: 'var(--accent-light)' }} />
-                </motion.div>
+                <Heart size={32} style={{ color: 'var(--accent-light)' }} aria-hidden="true" />
               </div>
 
               <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>
@@ -469,7 +433,7 @@ const PricingSection = () => {
 
               <ul className="space-y-3 mb-8">
                 {freeFeatures.map((feature, i) => (
-                  <motion.li
+                  <m.li
                     key={feature}
                     initial={{ opacity: 0, x: -10 }}
                     animate={isInView ? { opacity: 1, x: 0 } : {}}
@@ -479,17 +443,18 @@ const PricingSection = () => {
                   >
                     <CheckCircle size={16} style={{ color: 'var(--success)' }} className="flex-shrink-0" />
                     {feature}
-                  </motion.li>
+                  </m.li>
                 ))}
               </ul>
 
               <MagneticButton>
                 <Link
-                  to="/app"
-                  className="group flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-white font-semibold text-base transition-all duration-300"
+                  to={ctaPath}
+                  className="group flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-base transition-all duration-300"
                   style={{
                     background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
                     boxShadow: '0 0 30px -5px rgba(250, 129, 18, 0.35)',
+                    color: 'var(--dark-text-primary)',
                   }}
                 >
                   Start Using for Free
@@ -505,7 +470,7 @@ const PricingSection = () => {
                 }}
               />
             </div>
-          </motion.div>
+          </m.div>
         </ParallaxLayer>
       </div>
     </section>
@@ -517,14 +482,12 @@ const PricingSection = () => {
 // ═══════════════════════════════════════════════
 
 const LandingPage = () => {
-  const heroRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end start'],
-  });
-  const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
-  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, 80]);
+  const { currentUser, markLandingReady } = useAuth();
+  const ctaPath = currentUser ? '/app' : '/signup';
+
+  useEffect(() => {
+    markLandingReady();
+  }, [markLandingReady]);
 
   const features = [
     {
@@ -550,7 +513,7 @@ const LandingPage = () => {
     {
       icon: FileText,
       title: 'Multiple Formats',
-      description: 'Supports TXT, DOC, DOCX, and PDF files. Paste text directly or upload files — your choice.',
+      description: 'Supports TXT, DOCX, and PDF files. Paste text directly or upload files — your choice.',
     },
     {
       icon: Upload,
@@ -569,45 +532,41 @@ const LandingPage = () => {
     <div className="min-h-screen overflow-hidden" style={{ background: 'var(--bg-deep)' }}>
 
       {/* ═══ HERO ═══ */}
-      <motion.section
-        ref={heroRef}
-        style={{ opacity: heroOpacity, scale: heroScale }}
-        className="relative min-h-screen flex items-center justify-center px-4"
-      >
-        <motion.div style={{ y: heroY }} className="max-w-4xl mx-auto text-center pt-20">
+      <section className="relative min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-4xl mx-auto text-center pt-20">
           {/* Badge */}
           <ParallaxLayer speed={-0.2}>
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              transition={{ duration: 0.35, delay: 0.04 }}
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-xs font-medium mb-8"
-              style={{ color: 'var(--accent-light)' }}
+              style={{ color: 'var(--accent-ink)' }}
             >
               <Sparkles size={12} />
               AI-Powered Essay Evaluation
               <ChevronRight size={12} />
-            </motion.div>
+            </m.div>
           </ParallaxLayer>
 
           {/* Main Heading — Text Reveal */}
           <ParallaxLayer speed={-0.1}>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[0.95] mb-6">
-              <span className="text-gradient-accent">
-                <TextReveal delay={0.3}>Grade smarter.</TextReveal>
-              </span>
+              <HeroTextReveal className="text-gradient-accent" delay={0.06}>
+                Grade smarter.
+              </HeroTextReveal>
               <br />
               <span style={{ color: 'var(--text-primary)' }}>
-                <TextReveal delay={0.5}>Not harder.</TextReveal>
+                <HeroTextReveal delay={0.1}>Not harder.</HeroTextReveal>
               </span>
             </h1>
           </ParallaxLayer>
 
           {/* Subtitle with Typewriter */}
-          <motion.p
+          <m.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.7 }}
+            transition={{ duration: 0.35, delay: 0.14 }}
             className="text-lg md:text-xl max-w-2xl mx-auto mb-10"
             style={{ color: 'var(--text-secondary)' }}
           >
@@ -615,25 +574,26 @@ const LandingPage = () => {
             <TypewriterText
               words={['teachers', 'professors', 'students', 'institutions']}
               className="font-bold"
-              style={{ color: 'var(--accent)' }}
+              style={{ color: 'var(--accent-ink)' }}
             />
-          </motion.p>
+          </m.p>
 
           {/* CTA Buttons — Magnetic */}
           <ParallaxLayer speed={0.1}>
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.9 }}
+              transition={{ duration: 0.35, delay: 0.2 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <MagneticButton strength={0.2}>
                 <Link
-                  to="/app"
-                  className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-white font-semibold text-base transition-all duration-300"
+                  to={ctaPath}
+                  className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-base transition-all duration-300"
                   style={{
                     background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
                     boxShadow: '0 0 30px -5px rgba(250, 129, 18, 0.35)',
+                    color: 'var(--dark-text-primary)',
                   }}
                 >
                   Start Evaluating
@@ -642,21 +602,21 @@ const LandingPage = () => {
               </MagneticButton>
               <MagneticButton strength={0.15}>
                 <Link
-                  to="/login"
+                  to={currentUser ? '/app' : '/login'}
                   className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm font-medium transition-all duration-200 glass"
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  Sign In
+                  {currentUser ? 'Open Dashboard' : 'Sign In'}
                 </Link>
               </MagneticButton>
-            </motion.div>
+            </m.div>
           </ParallaxLayer>
 
           {/* Trust indicators */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 1.2 }}
+            transition={{ duration: 0.35, delay: 0.26 }}
             className="mt-16 flex items-center justify-center gap-6 flex-wrap"
           >
             {['Instant Grading', 'Multiple Rubrics', 'PDF Reports', '100% Free'].map((item) => (
@@ -664,27 +624,25 @@ const LandingPage = () => {
                 <CheckCircle size={14} style={{ color: 'var(--accent)' }} />
                 {item}
               </div>
-            ))}
-          </motion.div>
-        </motion.div>
+	            ))}
+	          </m.div>
+	        </div>
 
         {/* Scroll indicator */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
+          transition={{ delay: 0.35 }}
           className="absolute bottom-8 left-1/2 -translate-x-1/2"
         >
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          <div
             className="w-5 h-8 rounded-full border-2 flex items-start justify-center pt-1.5"
             style={{ borderColor: 'var(--border-medium)' }}
           >
             <div className="w-1 h-1.5 rounded-full" style={{ background: 'var(--accent-light)' }} />
-          </motion.div>
-        </motion.div>
-      </motion.section>
+          </div>
+        </m.div>
+      </section>
 
       {/* ═══ STATS ═══ */}
       <section className="relative py-20 px-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 200px' }}>
@@ -694,21 +652,21 @@ const LandingPage = () => {
       {/* ═══ FEATURES — Tilt Cards + Icon Animations ═══ */}
       <section className="relative py-32 px-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 600px' }}>
         <div className="max-w-6xl mx-auto">
-          <motion.div
+          <m.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-100px' }}
             variants={stagger}
             className="text-center mb-16"
           >
-            <motion.p
+            <m.p
               variants={fadeUp}
               className="text-sm font-semibold uppercase tracking-widest mb-3"
-              style={{ color: 'var(--accent)' }}
+              style={{ color: 'var(--accent-ink)' }}
             >
               Features
-            </motion.p>
-            <motion.h2
+            </m.p>
+            <m.h2
               variants={fadeUp}
               className="text-3xl md:text-5xl font-bold mb-4"
               style={{ color: 'var(--text-primary)' }}
@@ -716,15 +674,15 @@ const LandingPage = () => {
               <TextReveal>Everything you need to grade</TextReveal>
               <br />
               <span className="text-gradient"><TextReveal delay={0.2}>with confidence</TextReveal></span>
-            </motion.h2>
-            <motion.p
+            </m.h2>
+            <m.p
               variants={fadeUp}
               className="text-base max-w-xl mx-auto"
               style={{ color: 'var(--text-secondary)' }}
             >
               Built for educators who value precision, speed, and fairness in essay evaluation.
-            </motion.p>
-          </motion.div>
+            </m.p>
+          </m.div>
 
           <ParallaxLayer speed={0.08}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -739,28 +697,28 @@ const LandingPage = () => {
       {/* ═══ HOW IT WORKS ═══ */}
       <section className="relative py-32 px-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 400px' }}>
         <div className="max-w-5xl mx-auto">
-          <motion.div
+          <m.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-100px' }}
             variants={stagger}
             className="text-center mb-20"
           >
-            <motion.p
+            <m.p
               variants={fadeUp}
               className="text-sm font-semibold uppercase tracking-widest mb-3"
-              style={{ color: 'var(--accent)' }}
+              style={{ color: 'var(--accent-ink)' }}
             >
               How It Works
-            </motion.p>
-            <motion.h2
+            </m.p>
+            <m.h2
               variants={fadeUp}
               className="text-3xl md:text-5xl font-bold"
               style={{ color: 'var(--text-primary)' }}
             >
               <TextReveal>Three simple steps</TextReveal>
-            </motion.h2>
-          </motion.div>
+            </m.h2>
+          </m.div>
 
           <ParallaxLayer speed={0.1}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 relative">
@@ -778,13 +736,13 @@ const LandingPage = () => {
       </section>
 
       {/* ═══ PRICING ═══ */}
-      <PricingSection />
+      <PricingSection ctaPath={ctaPath} />
 
       {/* ═══ CTA ═══ */}
       <section className="relative py-32 px-4 section-dark rounded-t-[3rem]" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 400px' }}>
         <div className="max-w-3xl mx-auto">
           <ParallaxLayer speed={0.12}>
-            <motion.div
+            <m.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
@@ -798,21 +756,21 @@ const LandingPage = () => {
                 }}
               />
               <div className="relative">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--dark-text-primary)' }}>
                   <TextReveal>Ready to transform your</TextReveal>
                   <br />
                   <span className="text-gradient"><TextReveal delay={0.2}>grading workflow?</TextReveal></span>
                 </h2>
-                <p className="text-base mb-8 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-base mb-8 max-w-md mx-auto" style={{ color: 'var(--dark-text-secondary)' }}>
                   Join educators who save hours every week with AI-powered essay evaluation.
                 </p>
                 <MagneticButton>
                   <Link
-                    to="/app"
+                    to={ctaPath}
                     className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-semibold transition-all duration-300"
                     style={{
                       background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
-                      color: '#FAF3E1',
+                      color: 'var(--dark-text-primary)',
                       boxShadow: '0 0 30px -5px rgba(250, 129, 18, 0.35)',
                     }}
                   >
@@ -821,7 +779,7 @@ const LandingPage = () => {
                   </Link>
                 </MagneticButton>
               </div>
-            </motion.div>
+            </m.div>
           </ParallaxLayer>
         </div>
       </section>
@@ -829,9 +787,7 @@ const LandingPage = () => {
       {/* ═══ FOOTER ═══ */}
       <footer className="py-12 px-4 section-dark">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-lg font-bold text-gradient">LitMark</span>
-          </div>
+          <BrandLogo size="compact" tone="dark" />
           <p className="text-sm" style={{ color: 'var(--dark-text-tertiary)' }}>
             © {new Date().getFullYear()} LitMark. Built for educators, by educators.
           </p>

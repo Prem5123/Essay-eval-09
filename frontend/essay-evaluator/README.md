@@ -14,7 +14,7 @@ A modern web application for evaluating essays using AI, with custom rubrics and
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js 20.9–20.x or 22+
 - npm or yarn
 
 ### Installation
@@ -41,7 +41,7 @@ A modern web application for evaluating essays using AI, with custom rubrics and
 5. Get your Firebase configuration:
    - Go to Project Settings > General > Your Apps > Firebase SDK snippet
    - Select "Config" and copy the configuration object
-6. Update the Firebase configuration in `src/firebase.js` with your own credentials
+6. Copy `.env.example` to `.env`; add Firebase values only when using a different Firebase project
 
 #### Storage Setup
 1. In the Firebase Console, go to "Storage"

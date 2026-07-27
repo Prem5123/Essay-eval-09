@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Essay Evaluator with AI",
   "engines": {
-    "node": ">=16.0.0"
+    "node": "^20.9.0 || >=22.0.0"
   },
   "scripts": {
     "start": "bash ./start.sh"
   }
-} 
+}
